@@ -1,0 +1,14 @@
+{
+  "name": "checklist-ai-coach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Checklist planner with an AI coach banner.",
+  "main": "ai-coach-server.js",
+  "scripts": {
+    "start": "node ai-coach-server.js",
+    "check": "node --check ai-coach-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

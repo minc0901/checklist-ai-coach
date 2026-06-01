@@ -1,0 +1,2031 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2f7d68">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="체크리스트">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./checklist-icon.svg" type="image/svg+xml">
+  <title>할 일 체크리스트</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --panel: #ffffff;
+      --ink: #1c2421;
+      --muted: #68746f;
+      --line: #dfe5df;
+      --accent: #2f7d68;
+      --accent-dark: #225d4e;
+      --blue: #2e5f95;
+      --rose: #b84d5f;
+      --amber: #a36a19;
+      --shadow: 0 16px 40px rgba(28, 36, 33, 0.1);
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 18px 42px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 46px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .today {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(82px, 1fr));
+      gap: 8px;
+      min-width: 290px;
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(28, 36, 33, 0.05);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .coach {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      margin: -6px 0 18px;
+      padding: 14px 16px;
+      border: 1px solid #cfe1da;
+      border-radius: 8px;
+      background: #f2faf7;
+      box-shadow: 0 8px 22px rgba(28, 36, 33, 0.06);
+    }
+
+    .coach strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: var(--accent-dark);
+    }
+
+    .coach p {
+      margin: 0;
+      color: var(--ink);
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .coach small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .coach-controls {
+      display: grid;
+      grid-template-columns: 150px auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .composer {
+      padding: 18px;
+      position: sticky;
+      top: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfb;
+      color: var(--ink);
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    textarea:focus,
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(47, 125, 104, 0.14);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .category-entry {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 150px;
+      gap: 8px;
+    }
+
+    .primary {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 7px;
+      min-height: 46px;
+      font-weight: 800;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .primary:active {
+      transform: translateY(1px);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 10px 0 0;
+    }
+
+    .plan {
+      border-bottom: 1px solid var(--line);
+      padding: 16px;
+      background: #eef7f4;
+    }
+
+    .plan-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .plan-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .plan-head h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .ghost {
+      min-height: 34px;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--accent-dark);
+      padding: 0 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .ghost:hover {
+      border-color: var(--accent);
+      background: #eef7f4;
+    }
+
+    .plan-summary {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 8px;
+    }
+
+    .plan-item {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      border: 1px solid #cfe1da;
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .plan-item.done {
+      background: #f7faf8;
+      opacity: 0.82;
+    }
+
+    .plan-time {
+      color: var(--accent-dark);
+      font-weight: 900;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .plan-title {
+      font-weight: 900;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .plan-item.done .plan-title {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .plan-status {
+      min-height: 32px;
+      border-radius: 7px;
+      background: #eef7f4;
+      color: var(--accent-dark);
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .plan-status.done {
+      background: #f0f2f0;
+      color: var(--muted);
+    }
+
+    .time-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .time-btn {
+      min-height: 32px;
+      border-radius: 7px;
+      background: #eef7f4;
+      color: var(--accent-dark);
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .time-btn.end {
+      background: #f7ead8;
+      color: var(--amber);
+    }
+
+    .time-btn:hover {
+      filter: brightness(0.96);
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      background: #edf1ed;
+      padding: 5px;
+      border-radius: 8px;
+    }
+
+    .tab {
+      min-height: 36px;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 3px 10px rgba(28, 36, 33, 0.08);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 160px 160px;
+      gap: 10px;
+    }
+
+    .list {
+      padding: 6px 16px 18px;
+      min-height: 430px;
+    }
+
+    .section {
+      padding-top: 14px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .count {
+      color: var(--accent-dark);
+      background: #e2f1ec;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 10px;
+      background: #fff;
+      margin-bottom: 8px;
+      cursor: grab;
+    }
+
+    .item:active {
+      cursor: grabbing;
+    }
+
+    .item.dragging {
+      opacity: 0.55;
+      border-color: var(--accent);
+      box-shadow: 0 10px 22px rgba(47, 125, 104, 0.18);
+    }
+
+    .item.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(47, 125, 104, 0.14);
+      background: #f8fcfa;
+    }
+
+    .drag-handle {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: #7c8983;
+      cursor: grab;
+      user-select: none;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .task-title {
+      font-weight: 800;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .item.done .task-title {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: #f0f2f0;
+    }
+
+    .pill.high {
+      background: #f8e4e8;
+      color: var(--rose);
+    }
+
+    .pill.medium {
+      background: #f7ead8;
+      color: var(--amber);
+    }
+
+    .pill.low {
+      background: #e3edf8;
+      color: var(--blue);
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 7px;
+      background: #f0f2f0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .icon-btn:hover {
+      color: var(--rose);
+      background: #f8e4e8;
+    }
+
+    .item-actions {
+      display: grid;
+      gap: 6px;
+      justify-items: end;
+    }
+
+    .edit-btn {
+      min-height: 30px;
+      border-radius: 7px;
+      background: #edf1ed;
+      color: var(--muted);
+      padding: 0 9px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .edit-btn:hover {
+      background: #e3edf8;
+      color: var(--blue);
+    }
+
+    .selection-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 42px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+    }
+
+    .selection-bar.idle {
+      display: none;
+    }
+
+    .selection-text {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .selection-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .danger {
+      color: var(--rose);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background: rgba(28, 36, 33, 0.36);
+    }
+
+    .modal.open {
+      display: grid;
+    }
+
+    .dialog {
+      width: min(520px, 100%);
+      max-height: min(720px, calc(100vh - 36px));
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .dialog-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .dialog-head h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .dialog-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .time-dialog-actions {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 72px 16px;
+      line-height: 1.6;
+    }
+
+    .calendar-wrap {
+      padding-top: 14px;
+    }
+
+    .calendar-head {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) 36px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .calendar-title {
+      text-align: center;
+      font-weight: 900;
+      font-size: 16px;
+    }
+
+    .calendar-nav {
+      width: 36px;
+      height: 36px;
+      border-radius: 7px;
+      background: #eef2ef;
+      color: var(--accent-dark);
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .calendar-grid,
+    .weekday-row {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .weekday {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      text-align: center;
+      padding: 4px 0;
+    }
+
+    .calendar-day {
+      min-height: 82px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      text-align: left;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      color: var(--ink);
+    }
+
+    .calendar-day:hover {
+      border-color: var(--accent);
+      background: #f5fbf9;
+    }
+
+    .calendar-day.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(47, 125, 104, 0.14);
+    }
+
+    .calendar-day.today {
+      background: #eef7f4;
+    }
+
+    .calendar-day.outside {
+      opacity: 0.45;
+    }
+
+    .day-number {
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .day-dots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      min-height: 8px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .dot.done {
+      background: #aeb8b2;
+    }
+
+    .day-count {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 840px) {
+      header,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        min-width: 0;
+      }
+
+      .coach {
+        grid-template-columns: 1fr;
+      }
+
+      .coach-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .composer {
+        position: static;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        padding: 18px 12px 32px;
+      }
+
+      .row,
+      .category-entry,
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .tabs {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .selection-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .selection-actions {
+        justify-content: stretch;
+      }
+
+      .selection-actions .ghost {
+        flex: 1;
+      }
+
+      .item {
+        grid-template-columns: 24px minmax(0, 1fr);
+      }
+
+      .plan-item {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>할 일 체크리스트</h1>
+        <p class="today" id="todayLabel"></p>
+      </div>
+      <section class="stats" aria-label="요약">
+        <div class="stat"><strong id="totalCount">0</strong><span>전체</span></div>
+        <div class="stat"><strong id="openCount">0</strong><span>남은 일</span></div>
+        <div class="stat"><strong id="doneCount">0</strong><span>끝난 일</span></div>
+      </section>
+    </header>
+
+    <section class="coach" aria-live="polite">
+      <div>
+        <strong>AI 코치</strong>
+        <p id="coachMessage">오늘 일정을 분석하고 있습니다.</p>
+        <small id="coachMeta">1시간마다 자동 갱신됩니다.</small>
+      </div>
+      <div class="coach-controls">
+        <select id="coachTone" aria-label="AI 코치 톤">
+          <option value="gentle">부드럽게</option>
+          <option value="realistic" selected>현실적으로</option>
+          <option value="strict">빡세게</option>
+        </select>
+        <button class="ghost" id="coachRefresh" type="button">AI 조언</button>
+      </div>
+    </section>
+
+    <section class="layout">
+      <form class="panel composer" id="taskForm">
+        <div class="field">
+          <label for="taskInput">할 일</label>
+          <textarea id="taskInput" placeholder="한 줄에 하나씩 적어도 됩니다."></textarea>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="taskDate">날짜</label>
+            <input id="taskDate" type="date">
+          </div>
+          <div class="field">
+            <label for="priority">중요도</label>
+            <select id="priority">
+              <option value="medium">보통</option>
+              <option value="high">높음</option>
+              <option value="low">낮음</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="categoryInput">상위 카테고리</label>
+          <div class="category-entry">
+            <input id="categoryInput" placeholder="예: 개인, 회사, 공부">
+            <select id="categoryPicker" aria-label="기존 카테고리 선택">
+              <option value="">선택</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="durationInput">소요 시간</label>
+          <input id="durationInput" type="number" min="5" step="5" value="30" inputmode="numeric">
+        </div>
+        <button class="primary" type="submit">추가</button>
+        <p class="hint">여러 줄로 입력하면 같은 날짜에 각각의 체크 항목으로 추가됩니다.</p>
+      </form>
+
+      <section class="panel">
+        <div class="toolbar">
+          <nav class="tabs" aria-label="보기 방식">
+            <button class="tab active" type="button" data-view="day">날짜별</button>
+            <button class="tab" type="button" data-view="month">월별</button>
+            <button class="tab" type="button" data-view="calendar">캘린더</button>
+            <button class="tab" type="button" data-view="all">전체</button>
+            <button class="tab" type="button" data-view="done">끝난 일</button>
+          </nav>
+          <div class="filters">
+            <input id="search" type="search" placeholder="검색">
+            <select id="categoryFilter" aria-label="카테고리 필터">
+              <option value="all">모든 카테고리</option>
+            </select>
+            <select id="statusFilter" aria-label="상태 필터">
+              <option value="all">모든 상태</option>
+              <option value="open">남은 일</option>
+              <option value="done">끝난 일</option>
+            </select>
+          </div>
+          <div class="selection-bar">
+            <div class="selection-text" id="selectionText">항목을 선택하면 수정과 삭제를 할 수 있습니다.</div>
+            <div class="selection-actions">
+              <button class="ghost" id="selectedEdit" type="button" disabled>수정</button>
+              <button class="ghost danger" id="selectedDelete" type="button" disabled>삭제</button>
+            </div>
+          </div>
+        </div>
+        <section class="plan" aria-label="오늘 시간 계획표">
+          <div class="plan-head">
+            <h2>오늘 시간 계획표</h2>
+            <div class="plan-actions">
+              <button class="ghost" id="notifyPlan" type="button">알림 허용</button>
+              <button class="ghost" id="downloadPlan" type="button">캘린더 알람</button>
+              <button class="ghost" id="refreshPlan" type="button">갱신</button>
+            </div>
+          </div>
+          <div class="plan-summary" id="planSummary"></div>
+          <div class="timeline" id="timePlan"></div>
+        </section>
+        <div class="list" id="taskList"></div>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <form class="dialog" id="editForm">
+      <div class="dialog-head">
+        <h2 id="editTitle">할 일 수정</h2>
+        <button class="icon-btn" id="editClose" type="button" aria-label="닫기" title="닫기">×</button>
+      </div>
+      <input id="editId" type="hidden">
+      <div class="field">
+        <label for="editTaskTitle">제목</label>
+        <textarea id="editTaskTitle"></textarea>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="editTaskDate">날짜</label>
+          <input id="editTaskDate" type="date">
+        </div>
+        <div class="field">
+          <label for="editPriority">중요도</label>
+          <select id="editPriority">
+            <option value="medium">보통</option>
+            <option value="high">높음</option>
+            <option value="low">낮음</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="editCategory">상위 카테고리</label>
+          <input id="editCategory" placeholder="예: 개인, 회사, 공부">
+        </div>
+        <div class="field">
+          <label for="editDuration">소요 시간</label>
+          <input id="editDuration" type="number" min="5" step="5" inputmode="numeric">
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="ghost" id="editCancel" type="button">취소</button>
+        <button class="primary" type="submit">저장</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal" id="timeModal" role="dialog" aria-modal="true" aria-labelledby="timeTitle">
+    <form class="dialog" id="timeForm">
+      <div class="dialog-head">
+        <h2 id="timeTitle">시간 기록</h2>
+        <button class="icon-btn" id="timeClose" type="button" aria-label="닫기" title="닫기">×</button>
+      </div>
+      <input id="timeTaskId" type="hidden">
+      <input id="timeMode" type="hidden">
+      <div class="field">
+        <label for="timeValue" id="timeLabel">시간</label>
+        <input id="timeValue" type="time" required>
+      </div>
+      <div class="dialog-actions time-dialog-actions">
+        <button class="ghost danger" id="timeClear" type="button">기록 지우기</button>
+        <button class="ghost" id="timeCancel" type="button">취소</button>
+        <button class="primary" type="submit">저장</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const storageKey = "daily-checklist-tasks-v1";
+    const coachStorageKey = "daily-checklist-ai-coach-v1";
+    const form = document.querySelector("#taskForm");
+    const input = document.querySelector("#taskInput");
+    const dateInput = document.querySelector("#taskDate");
+    const priorityInput = document.querySelector("#priority");
+    const categoryInput = document.querySelector("#categoryInput");
+    const categoryPicker = document.querySelector("#categoryPicker");
+    const durationInput = document.querySelector("#durationInput");
+    const list = document.querySelector("#taskList");
+    const timePlan = document.querySelector("#timePlan");
+    const planSummary = document.querySelector("#planSummary");
+    const refreshPlan = document.querySelector("#refreshPlan");
+    const notifyPlan = document.querySelector("#notifyPlan");
+    const downloadPlan = document.querySelector("#downloadPlan");
+    const searchInput = document.querySelector("#search");
+    const categoryFilter = document.querySelector("#categoryFilter");
+    const statusFilter = document.querySelector("#statusFilter");
+    const tabs = Array.from(document.querySelectorAll(".tab"));
+    const coachMessage = document.querySelector("#coachMessage");
+    const coachMeta = document.querySelector("#coachMeta");
+    const coachRefresh = document.querySelector("#coachRefresh");
+    const coachTone = document.querySelector("#coachTone");
+    const selectionText = document.querySelector("#selectionText");
+    const selectedEdit = document.querySelector("#selectedEdit");
+    const selectedDelete = document.querySelector("#selectedDelete");
+    const selectionBar = document.querySelector(".selection-bar");
+    const editModal = document.querySelector("#editModal");
+    const editForm = document.querySelector("#editForm");
+    const editId = document.querySelector("#editId");
+    const editTaskTitle = document.querySelector("#editTaskTitle");
+    const editTaskDate = document.querySelector("#editTaskDate");
+    const editPriority = document.querySelector("#editPriority");
+    const editCategory = document.querySelector("#editCategory");
+    const editDuration = document.querySelector("#editDuration");
+    const editClose = document.querySelector("#editClose");
+    const editCancel = document.querySelector("#editCancel");
+    const timeModal = document.querySelector("#timeModal");
+    const timeForm = document.querySelector("#timeForm");
+    const timeTaskId = document.querySelector("#timeTaskId");
+    const timeMode = document.querySelector("#timeMode");
+    const timeTitle = document.querySelector("#timeTitle");
+    const timeLabel = document.querySelector("#timeLabel");
+    const timeValue = document.querySelector("#timeValue");
+    const timeClose = document.querySelector("#timeClose");
+    const timeCancel = document.querySelector("#timeCancel");
+    const timeClear = document.querySelector("#timeClear");
+    const formatter = new Intl.DateTimeFormat("ko-KR", { dateStyle: "full" });
+    const monthFormatter = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long" });
+
+    let tasks = loadTasks();
+    let view = "day";
+    let draggedTaskId = "";
+    let pointerDragTaskId = "";
+    let manualDragElement = null;
+    let manualDragMoved = false;
+    let latestPlanRows = [];
+    let notificationTimers = [];
+    let notificationsEnabled = false;
+    let selectedTaskId = "";
+    let coachTimer = null;
+
+    const today = new Date();
+    const todayIso = toIsoDate(today);
+    let calendarCursor = new Date(today.getFullYear(), today.getMonth(), 1);
+    let selectedCalendarDate = todayIso;
+    dateInput.value = todayIso;
+    document.querySelector("#todayLabel").textContent = formatter.format(today);
+    coachTone.value = localStorage.getItem("daily-checklist-coach-tone-v1") || "realistic";
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const titles = input.value
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (!titles.length) {
+        input.focus();
+        return;
+      }
+
+      const createdAt = Date.now();
+      const firstOrder = nextOrder();
+      const newTasks = titles.map((title, index) => ({
+        id: `${createdAt}-${index}`,
+        title,
+        date: dateInput.value || todayIso,
+        priority: priorityInput.value,
+        category: normalizeCategory(categoryInput.value),
+        duration: normalizeDuration(durationInput.value),
+        done: false,
+        startTime: "",
+        endTime: "",
+        createdAt: createdAt + index,
+        order: firstOrder + index,
+      }));
+
+      tasks = [...newTasks, ...tasks];
+      input.value = "";
+      saveAndRender();
+      input.focus();
+    });
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        view = tab.dataset.view;
+        clearSelection();
+        tabs.forEach((item) => item.classList.toggle("active", item === tab));
+        statusFilter.value = view === "done" ? "done" : statusFilter.value;
+        render();
+      });
+    });
+
+    searchInput.addEventListener("input", render);
+    categoryPicker.addEventListener("change", () => {
+      if (categoryPicker.value) {
+        categoryInput.value = categoryPicker.value;
+        categoryInput.focus();
+      }
+    });
+    categoryFilter.addEventListener("change", render);
+    statusFilter.addEventListener("change", render);
+    refreshPlan.addEventListener("click", () => {
+      renderTimePlan();
+      scheduleBrowserNotifications();
+    });
+    notifyPlan.addEventListener("click", requestPlanNotifications);
+    downloadPlan.addEventListener("click", downloadCalendarAlarms);
+    coachRefresh.addEventListener("click", () => updateCoach({ force: true }));
+    coachTone.addEventListener("change", () => {
+      localStorage.setItem("daily-checklist-coach-tone-v1", coachTone.value);
+      updateCoach({ force: true });
+    });
+    timePlan.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button?.dataset.action?.startsWith("time-")) return;
+      openTimeModal(button.dataset.id, button.dataset.action === "time-start" ? "start" : "end");
+      clearSelection();
+    });
+    selectedEdit.addEventListener("click", () => {
+      if (selectedTaskId) openEditModal(selectedTaskId);
+    });
+    selectedDelete.addEventListener("click", () => {
+      if (!selectedTaskId) return;
+      tasks = tasks.filter((task) => task.id !== selectedTaskId);
+      clearSelection();
+      saveAndRender();
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!selectedTaskId) return;
+      if (event.target.closest(".item, .selection-bar, .modal")) return;
+      clearSelection();
+      render();
+    });
+
+    list.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (button) {
+        if (button.dataset.action === "calendar-prev" || button.dataset.action === "calendar-next") {
+          const direction = button.dataset.action === "calendar-prev" ? -1 : 1;
+          calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + direction, 1);
+          selectedCalendarDate = toIsoDate(new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1));
+          render();
+          return;
+        }
+        if (button.dataset.action === "calendar-day") {
+          selectedCalendarDate = button.dataset.date;
+          calendarCursor = new Date(`${selectedCalendarDate}T00:00:00`);
+          calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1);
+          render();
+          return;
+        }
+      }
+      const item = event.target.closest(".item");
+      if (!item) return;
+      const id = item.dataset.id;
+
+      if (button?.dataset.action === "time-start" || button?.dataset.action === "time-end") {
+        openTimeModal(id, button.dataset.action === "time-start" ? "start" : "end");
+        clearSelection();
+        return;
+      }
+
+      selectedTaskId = selectedTaskId === id ? "" : id;
+      render();
+    });
+
+    editForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const title = editTaskTitle.value.trim();
+      if (!title) {
+        editTaskTitle.focus();
+        return;
+      }
+
+      const id = editId.value;
+      tasks = tasks.map((task) => task.id === id ? {
+        ...task,
+        title,
+        date: editTaskDate.value || todayIso,
+        priority: editPriority.value,
+        category: normalizeCategory(editCategory.value),
+        duration: normalizeDuration(editDuration.value),
+      } : task);
+      closeEditModal();
+      clearSelection();
+      saveAndRender();
+    });
+
+    editClose.addEventListener("click", closeEditModal);
+    editCancel.addEventListener("click", closeEditModal);
+    editModal.addEventListener("click", (event) => {
+      if (event.target === editModal) closeEditModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && editModal.classList.contains("open")) closeEditModal();
+      if (event.key === "Escape" && timeModal.classList.contains("open")) closeTimeModal();
+    });
+
+    timeForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const id = timeTaskId.value;
+      const mode = timeMode.value;
+      const value = timeValue.value;
+      tasks = tasks.map((task) => {
+        if (task.id !== id) return task;
+        if (mode === "start") return { ...task, startTime: value, done: false };
+        return { ...task, endTime: value, done: true };
+      });
+      closeTimeModal();
+      saveAndRender();
+    });
+    timeClose.addEventListener("click", closeTimeModal);
+    timeCancel.addEventListener("click", closeTimeModal);
+    timeClear.addEventListener("click", () => {
+      const id = timeTaskId.value;
+      const mode = timeMode.value;
+      tasks = tasks.map((task) => {
+        if (task.id !== id) return task;
+        if (mode === "start") return { ...task, startTime: "" };
+        return { ...task, endTime: "", done: false };
+      });
+      closeTimeModal();
+      saveAndRender();
+    });
+    timeModal.addEventListener("click", (event) => {
+      if (event.target === timeModal) closeTimeModal();
+    });
+
+    list.addEventListener("dragstart", (event) => {
+      const item = event.target.closest(".item");
+      if (!item) return;
+      draggedTaskId = item.dataset.id;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedTaskId);
+      item.classList.add("dragging");
+    });
+
+    list.addEventListener("dragover", (event) => {
+      if (!draggedTaskId) return;
+      const item = event.target.closest(".item");
+      if (!item || item.dataset.id === draggedTaskId) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    });
+
+    list.addEventListener("drop", (event) => {
+      if (!draggedTaskId) return;
+      const item = event.target.closest(".item");
+      if (!item || item.dataset.id === draggedTaskId) return;
+      event.preventDefault();
+      const box = item.getBoundingClientRect();
+      const before = event.clientY < box.top + box.height / 2;
+      reorderTasks(draggedTaskId, item.dataset.id, before);
+      draggedTaskId = "";
+    });
+
+    list.addEventListener("dragend", () => {
+      draggedTaskId = "";
+      document.querySelectorAll(".item.dragging").forEach((item) => item.classList.remove("dragging"));
+    });
+
+    list.addEventListener("pointerdown", (event) => {
+      startManualDrag(event);
+    });
+
+    list.addEventListener("mousedown", (event) => {
+      startManualDrag(event);
+    });
+
+    document.addEventListener("pointerup", (event) => {
+      finishManualDrag(event);
+    });
+
+    document.addEventListener("mouseup", (event) => {
+      finishManualDrag(event);
+    });
+
+    document.addEventListener("pointermove", (event) => {
+      moveManualDrag(event);
+    });
+
+    document.addEventListener("mousemove", (event) => {
+      moveManualDrag(event);
+    });
+
+    function startManualDrag(event) {
+      if (event.target.closest("button, input, select, textarea, a")) return;
+      const item = event.target.closest(".item");
+      if (!item) return;
+      pointerDragTaskId = item.dataset.id;
+      manualDragElement = item;
+      manualDragMoved = false;
+      item.classList.add("dragging");
+      event.preventDefault();
+    }
+
+    function moveManualDrag(event) {
+      if (!pointerDragTaskId || !manualDragElement) return;
+      event.preventDefault();
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".item");
+      if (!target || target === manualDragElement) return;
+
+      manualDragMoved = true;
+      const box = target.getBoundingClientRect();
+      const before = event.clientY < box.top + box.height / 2;
+      target.parentElement.insertBefore(manualDragElement, before ? target : target.nextElementSibling);
+    }
+
+    function finishManualDrag(event) {
+      if (!pointerDragTaskId) return;
+      const sourceId = pointerDragTaskId;
+      const wasMoved = manualDragMoved;
+      pointerDragTaskId = "";
+      manualDragElement = null;
+      manualDragMoved = false;
+      document.querySelectorAll(".item.dragging").forEach((item) => item.classList.remove("dragging"));
+      if (!wasMoved) {
+        selectedTaskId = selectedTaskId === sourceId ? "" : sourceId;
+        render();
+        return;
+      }
+      clearSelection();
+      saveVisibleOrder();
+    }
+
+    function loadTasks() {
+      try {
+        return ensureTaskOrder(JSON.parse(localStorage.getItem(storageKey)) || []);
+      } catch {
+        return [];
+      }
+    }
+
+    function saveAndRender() {
+      localStorage.setItem(storageKey, JSON.stringify(tasks));
+      render();
+      updateCoach({ force: false });
+    }
+
+    function render() {
+      const query = searchInput.value.trim().toLowerCase();
+      const status = statusFilter.value;
+      renderCategoryControls();
+      renderSelectionControls();
+      const selectedCategory = categoryFilter.value;
+      const visible = tasks
+        .filter((task) => view !== "done" || isTaskDone(task))
+        .filter((task) => selectedCategory === "all" || taskCategory(task) === selectedCategory)
+        .filter((task) => status === "all" || (status === "done" ? isTaskDone(task) : !isTaskDone(task)))
+        .filter((task) => !query || `${task.title} ${taskCategory(task)}`.toLowerCase().includes(query))
+        .sort(sortByManualOrder);
+
+      document.querySelector("#totalCount").textContent = tasks.length;
+      document.querySelector("#openCount").textContent = tasks.filter((task) => !isTaskDone(task)).length;
+      document.querySelector("#doneCount").textContent = tasks.filter(isTaskDone).length;
+      if (selectedTaskId && !tasks.some((task) => task.id === selectedTaskId)) {
+        selectedTaskId = "";
+        renderSelectionControls();
+      }
+      renderTimePlan();
+
+      if (view === "calendar") {
+        renderCalendar(visible);
+        return;
+      }
+
+      if (!visible.length) {
+        list.innerHTML = '<div class="empty">표시할 할 일이 없습니다.<br>왼쪽에서 새 항목을 추가해보세요.</div>';
+        return;
+      }
+
+      const groups = groupTasks(visible);
+      list.innerHTML = Object.entries(groups).map(([label, items]) => `
+        <section class="section">
+          <h2 class="section-title">
+            <span>${escapeHtml(label)}</span>
+            <span class="count">${items.length}개</span>
+          </h2>
+          ${items.map(taskTemplate).join("")}
+        </section>
+      `).join("");
+    }
+
+    function groupTasks(items) {
+      return items.reduce((groups, task) => {
+        const label = groupLabel(task);
+        groups[label] = groups[label] || [];
+        groups[label].push(task);
+        return groups;
+      }, {});
+    }
+
+    function groupLabel(task) {
+      const dateText = task.date;
+      const category = taskCategory(task);
+      if (view === "month") {
+        return `${monthFormatter.format(new Date(`${dateText}T00:00:00`))} · ${category}`;
+      }
+      if (view === "all" || view === "done") {
+        return category;
+      }
+      return `${formatter.format(new Date(`${dateText}T00:00:00`))} · ${category}`;
+    }
+
+    function renderCalendar(items) {
+      const year = calendarCursor.getFullYear();
+      const month = calendarCursor.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const start = new Date(year, month, 1 - firstDay.getDay());
+      const cells = Array.from({ length: 42 }, (_, index) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + index);
+        return date;
+      });
+      const byDate = items.reduce((groups, task) => {
+        groups[task.date] = groups[task.date] || [];
+        groups[task.date].push(task);
+        return groups;
+      }, {});
+      const selectedItems = (byDate[selectedCalendarDate] || [])
+        .sort(sortByManualOrder);
+
+      list.innerHTML = `
+        <section class="calendar-wrap">
+          <div class="calendar-head">
+            <button class="calendar-nav" type="button" data-action="calendar-prev" aria-label="이전 달">‹</button>
+            <div class="calendar-title">${escapeHtml(monthFormatter.format(calendarCursor))}</div>
+            <button class="calendar-nav" type="button" data-action="calendar-next" aria-label="다음 달">›</button>
+          </div>
+          <div class="weekday-row">
+            ${["일", "월", "화", "수", "목", "금", "토"].map((day) => `<div class="weekday">${day}</div>`).join("")}
+          </div>
+          <div class="calendar-grid">
+            ${cells.map((date) => calendarDayTemplate(date, month, byDate[toIsoDate(date)] || [])).join("")}
+          </div>
+          <section class="section">
+            <h2 class="section-title">
+              <span>${escapeHtml(formatter.format(new Date(`${selectedCalendarDate}T00:00:00`)))}</span>
+              <span class="count">${selectedItems.length}개</span>
+            </h2>
+            ${selectedItems.length ? selectedItems.map(taskTemplate).join("") : '<div class="empty">이 날짜에 표시할 할 일이 없습니다.</div>'}
+          </section>
+        </section>
+      `;
+    }
+
+    function calendarDayTemplate(date, currentMonth, items) {
+      const iso = toIsoDate(date);
+      const done = items.filter(isTaskDone).length;
+      const open = items.length - done;
+      const dots = items.slice(0, 5).map((task) => `<span class="dot ${isTaskDone(task) ? "done" : ""}"></span>`).join("");
+      const countText = items.length ? `${open} 남음 · ${done} 끝` : "";
+      const classes = [
+        "calendar-day",
+        date.getMonth() !== currentMonth ? "outside" : "",
+        iso === todayIso ? "today" : "",
+        iso === selectedCalendarDate ? "selected" : "",
+      ].filter(Boolean).join(" ");
+
+      return `
+        <button class="${classes}" type="button" data-action="calendar-day" data-date="${iso}">
+          <span class="day-number">${date.getDate()}</span>
+          <span class="day-dots">${dots}</span>
+          <span class="day-count">${escapeHtml(countText)}</span>
+        </button>
+      `;
+    }
+
+    function taskTemplate(task) {
+      const priorityLabel = { high: "높음", medium: "보통", low: "낮음" }[task.priority] || "보통";
+      const category = taskCategory(task);
+      const done = isTaskDone(task);
+      return `
+        <article class="item ${done ? "done" : ""} ${task.id === selectedTaskId ? "selected" : ""}" data-id="${escapeHtml(task.id)}" draggable="true">
+          <span class="drag-handle" aria-label="순서 변경" title="드래그해서 순서 변경">⋮⋮</span>
+          <div>
+            <div class="task-title">${escapeHtml(task.title)}</div>
+            <div class="meta">
+              <span class="pill">${escapeHtml(category)}</span>
+              <span class="pill">${escapeHtml(task.date)}</span>
+              <span class="pill ${escapeHtml(task.priority)}">${priorityLabel}</span>
+            </div>
+          </div>
+          <div class="time-actions">
+            <button class="time-btn" type="button" data-action="time-start">${task.startTime ? "시작 수정" : "시작"}</button>
+            <button class="time-btn end" type="button" data-action="time-end">${task.endTime ? "끝 수정" : "끝"}</button>
+          </div>
+        </article>
+      `;
+    }
+
+    function toIsoDate(date) {
+      const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return offsetDate.toISOString().slice(0, 10);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function normalizeCategory(value) {
+      return value.trim() || "미분류";
+    }
+
+    function taskCategory(task) {
+      return normalizeCategory(task.category || "");
+    }
+
+    function isTaskDone(task) {
+      return Boolean(task.endTime || task.done);
+    }
+
+    function normalizeDuration(value) {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed) || parsed < 5) return 30;
+      return Math.min(parsed, 720);
+    }
+
+    function currentTimeValue() {
+      const now = new Date();
+      const pad = (value) => String(value).padStart(2, "0");
+      return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+
+    function openTimeModal(id, mode) {
+      const task = tasks.find((item) => item.id === id);
+      if (!task) return;
+      timeTaskId.value = id;
+      timeMode.value = mode;
+      const isStart = mode === "start";
+      timeTitle.textContent = isStart ? "시작 시간 기록" : "끝 시간 기록";
+      timeLabel.textContent = isStart ? "시작 시간" : "끝 시간";
+      timeValue.value = (isStart ? task.startTime : task.endTime) || currentTimeValue();
+      timeModal.classList.add("open");
+      timeValue.focus();
+    }
+
+    function closeTimeModal() {
+      timeModal.classList.remove("open");
+      timeForm.reset();
+      timeTaskId.value = "";
+      timeMode.value = "";
+    }
+
+    function taskDateTime(task, timeText) {
+      if (!timeText) return null;
+      return new Date(`${task.date || todayIso}T${timeText}:00`);
+    }
+
+    function openEditModal(id) {
+      const task = tasks.find((item) => item.id === id);
+      if (!task) return;
+      editId.value = task.id;
+      editTaskTitle.value = task.title || "";
+      editTaskDate.value = task.date || todayIso;
+      editPriority.value = task.priority || "medium";
+      editCategory.value = taskCategory(task);
+      editDuration.value = normalizeDuration(task.duration);
+      editModal.classList.add("open");
+      editTaskTitle.focus();
+    }
+
+    function closeEditModal() {
+      editModal.classList.remove("open");
+      editForm.reset();
+      editId.value = "";
+      clearSelection();
+      renderSelectionControls();
+    }
+
+    function renderSelectionControls() {
+      const selected = tasks.find((task) => task.id === selectedTaskId);
+      selectionBar.classList.toggle("idle", !selected);
+      selectedEdit.disabled = !selected;
+      selectedDelete.disabled = !selected;
+      selectionText.textContent = selected
+        ? `선택됨: ${selected.title}`
+        : "항목을 선택하면 수정과 삭제를 할 수 있습니다.";
+    }
+
+    function clearSelection() {
+      selectedTaskId = "";
+    }
+
+    function ensureTaskOrder(items) {
+      return items.map((task, index) => ({
+        ...task,
+        order: Number.isFinite(Number(task.order)) ? Number(task.order) : index,
+      }));
+    }
+
+    function taskOrder(task) {
+      return Number.isFinite(Number(task.order)) ? Number(task.order) : Number.MAX_SAFE_INTEGER;
+    }
+
+    function sortByManualOrder(a, b) {
+      return Number(isTaskDone(a)) - Number(isTaskDone(b)) || taskOrder(a) - taskOrder(b) || (a.createdAt || 0) - (b.createdAt || 0);
+    }
+
+    function sortByPlanOrder(a, b) {
+      return taskOrder(a) - taskOrder(b) || (a.createdAt || 0) - (b.createdAt || 0);
+    }
+
+    function nextOrder() {
+      const orders = tasks.map(taskOrder).filter(Number.isFinite);
+      return orders.length ? Math.min(...orders) - 100 : 0;
+    }
+
+    function reorderTasks(sourceId, targetId, beforeTarget) {
+      const ordered = [...tasks].sort(sortByManualOrder);
+      const sourceIndex = ordered.findIndex((task) => task.id === sourceId);
+      const targetIndex = ordered.findIndex((task) => task.id === targetId);
+      if (sourceIndex < 0 || targetIndex < 0) return;
+
+      const [source] = ordered.splice(sourceIndex, 1);
+      const adjustedTargetIndex = ordered.findIndex((task) => task.id === targetId);
+      ordered.splice(beforeTarget ? adjustedTargetIndex : adjustedTargetIndex + 1, 0, source);
+      const orderMap = new Map(ordered.map((task, index) => [task.id, index]));
+      tasks = tasks.map((task) => ({ ...task, order: orderMap.get(task.id) ?? taskOrder(task) }));
+      saveAndRender();
+    }
+
+    function saveVisibleOrder() {
+      const visibleIds = Array.from(list.querySelectorAll(".item")).map((item) => item.dataset.id);
+      if (visibleIds.length < 2) return;
+
+      const visibleSet = new Set(visibleIds);
+      const current = [...tasks].sort(sortByPlanOrder);
+      const firstVisibleIndex = current.findIndex((task) => visibleSet.has(task.id));
+      const remaining = current.filter((task) => !visibleSet.has(task.id));
+      const visibleTasks = visibleIds
+        .map((id) => tasks.find((task) => task.id === id))
+        .filter(Boolean);
+      const insertAt = firstVisibleIndex >= 0 ? firstVisibleIndex : current.length;
+      const reordered = [
+        ...remaining.slice(0, insertAt),
+        ...visibleTasks,
+        ...remaining.slice(insertAt),
+      ];
+      const orderMap = new Map(reordered.map((task, index) => [task.id, index]));
+      tasks = tasks.map((task) => ({ ...task, order: orderMap.get(task.id) ?? taskOrder(task) }));
+      saveAndRender();
+    }
+
+    function categories() {
+      return [...new Set(tasks.map(taskCategory))].sort((a, b) => a.localeCompare(b, "ko"));
+    }
+
+    function renderCategoryControls() {
+      const current = categoryFilter.value;
+      const picked = categoryPicker.value;
+      const options = categories();
+      categoryPicker.innerHTML = '<option value="">선택</option>' + options
+        .map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)
+        .join("");
+      categoryPicker.value = options.includes(picked) ? picked : "";
+      categoryFilter.innerHTML = '<option value="all">모든 카테고리</option>' + options
+        .map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)
+        .join("");
+      categoryFilter.value = options.includes(current) ? current : "all";
+    }
+
+    function renderTimePlan() {
+      const now = new Date();
+      const start = roundUpToFiveMinutes(now);
+      const status = statusFilter.value;
+      const todayTasks = tasks
+        .filter((task) => task.date === todayIso)
+        .filter((task) => {
+          if (status === "done") return isTaskDone(task);
+          if (status === "open") return !isTaskDone(task);
+          return true;
+        })
+        .sort((a, b) => Number(isTaskDone(a)) - Number(isTaskDone(b)) || sortByPlanOrder(a, b));
+
+      if (!todayTasks.length) {
+        latestPlanRows = [];
+        planSummary.textContent = status === "done" ? "오늘 끝난 할 일이 없습니다." : "오늘 표시할 할 일이 없습니다.";
+        timePlan.innerHTML = status === "done"
+          ? '<div class="empty">끝 시간을 기록한 항목이 있으면 여기에서 확인할 수 있습니다.</div>'
+          : '<div class="empty">오늘 날짜의 할 일을 추가하면 현재 시각부터 자동으로 배치됩니다.</div>';
+        clearNotificationTimers();
+        return;
+      }
+
+      let cursor = new Date(start);
+      const rows = todayTasks.map((task) => {
+        const duration = normalizeDuration(task.duration);
+        const recordedStart = taskDateTime(task, task.startTime);
+        const recordedEnd = taskDateTime(task, task.endTime);
+        const from = recordedStart || new Date(cursor);
+        const to = recordedEnd || new Date(from.getTime() + duration * 60000);
+        cursor = new Date(Math.max(cursor.getTime(), to.getTime()));
+        return { task, duration, from, to, recordedStart, recordedEnd };
+      });
+      const totalMinutes = rows.reduce((sum, row) => {
+        const minutes = Math.max(0, Math.round((row.to.getTime() - row.from.getTime()) / 60000));
+        return sum + (minutes || row.duration);
+      }, 0);
+      latestPlanRows = rows;
+
+      const overflow = cursor.getDate() !== start.getDate() ? " · 자정 이후까지 이어집니다" : "";
+      const modeLabel = status === "done" ? "끝난 항목" : (status === "open" ? "남은 항목" : "전체 항목");
+      planSummary.textContent = `${formatTime(now)} 기준 · ${modeLabel} ${todayTasks.length}개 · 총 ${formatDuration(totalMinutes)}${overflow}`;
+      timePlan.innerHTML = rows.map(({ task, duration, from, to, recordedStart, recordedEnd }) => `
+        <article class="plan-item ${isTaskDone(task) ? "done" : ""}">
+          <div class="plan-time">${formatTime(from)}<br>${formatTime(to)}</div>
+          <div>
+            <div class="plan-title">${escapeHtml(task.title)}</div>
+            <div class="meta">
+              <span class="pill">${escapeHtml(taskCategory(task))}</span>
+              <span class="pill">${escapeHtml(taskDurationLabel(task, duration))}</span>
+              ${recordedStart || recordedEnd ? "" : '<span class="pill">예정</span>'}
+            </div>
+          </div>
+          <div class="time-actions">
+            <button class="time-btn" type="button" data-action="time-start" data-id="${escapeHtml(task.id)}">${task.startTime ? "시작 수정" : "시작"}</button>
+            <button class="time-btn end" type="button" data-action="time-end" data-id="${escapeHtml(task.id)}">${task.endTime ? "끝 수정" : "끝"}</button>
+          </div>
+        </article>
+      `).join("");
+
+      if (notificationsEnabled) {
+        scheduleBrowserNotifications();
+      }
+    }
+
+    async function requestPlanNotifications() {
+      if (!("Notification" in window)) {
+        alert("이 브라우저는 알림을 지원하지 않습니다. 캘린더 알람 파일을 휴대폰 캘린더에 가져와 주세요.");
+        return;
+      }
+
+      const permission = Notification.permission === "granted"
+        ? "granted"
+        : await Notification.requestPermission();
+
+      if (permission !== "granted") {
+        alert("브라우저 알림 권한이 필요합니다.");
+        return;
+      }
+
+      notificationsEnabled = true;
+      notifyPlan.textContent = "알림 켜짐";
+      scheduleBrowserNotifications();
+      alert("오늘 계획표의 시작 시간에 맞춰 브라우저 알림을 예약했습니다. 이 방식은 앱 탭이 열려 있을 때 가장 안정적으로 동작합니다.");
+    }
+
+    function scheduleBrowserNotifications() {
+      clearNotificationTimers();
+      if (!notificationsEnabled || !latestPlanRows.length || !("Notification" in window) || Notification.permission !== "granted") return;
+
+      const now = Date.now();
+      latestPlanRows.forEach(({ task, from, duration }) => {
+        const delay = from.getTime() - now;
+        if (delay < 0 || delay > 2147483647) return;
+        notificationTimers.push(window.setTimeout(() => {
+          new Notification(task.title, {
+            body: `${taskCategory(task)} · ${duration}분 · ${formatTime(from)} 시작`,
+            tag: `todo-${task.id}-${from.getTime()}`,
+          });
+        }, delay));
+      });
+    }
+
+    function clearNotificationTimers() {
+      notificationTimers.forEach((timer) => window.clearTimeout(timer));
+      notificationTimers = [];
+    }
+
+    function downloadCalendarAlarms() {
+      if (!latestPlanRows.length) {
+        alert("오늘 시간 계획표가 비어 있습니다.");
+        return;
+      }
+
+      const lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Checklist Planner//KO",
+        "CALSCALE:GREGORIAN",
+      ];
+
+      latestPlanRows.forEach(({ task, from, to, duration }) => {
+        const uid = `${task.id}-${from.getTime()}@checklist-planner`;
+        lines.push(
+          "BEGIN:VEVENT",
+          `UID:${escapeIcs(uid)}`,
+          `DTSTAMP:${formatIcsDate(new Date())}`,
+          `DTSTART:${formatIcsDate(from)}`,
+          `DTEND:${formatIcsDate(to)}`,
+          `SUMMARY:${escapeIcs(task.title)}`,
+          `DESCRIPTION:${escapeIcs(`${taskCategory(task)} / ${duration}분`)}`,
+          "BEGIN:VALARM",
+          "TRIGGER:PT0M",
+          "ACTION:DISPLAY",
+          `DESCRIPTION:${escapeIcs(task.title)}`,
+          "END:VALARM",
+          "END:VEVENT"
+        );
+      });
+
+      lines.push("END:VCALENDAR");
+      const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `today-plan-${todayIso}.ics`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    function priorityRank(priority) {
+      return { high: 0, medium: 1, low: 2 }[priority] ?? 1;
+    }
+
+    function roundUpToFiveMinutes(date) {
+      const rounded = new Date(date);
+      rounded.setSeconds(0, 0);
+      const remainder = rounded.getMinutes() % 5;
+      if (remainder) rounded.setMinutes(rounded.getMinutes() + 5 - remainder);
+      return rounded;
+    }
+
+    function formatTime(date) {
+      return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function formatDuration(minutes) {
+      const hours = Math.floor(minutes / 60);
+      const rest = minutes % 60;
+      if (!hours) return `${rest}분`;
+      if (!rest) return `${hours}시간`;
+      return `${hours}시간 ${rest}분`;
+    }
+
+    function actualDurationMinutes(task) {
+      const start = taskDateTime(task, task.startTime);
+      const end = taskDateTime(task, task.endTime);
+      if (!start || !end) return null;
+      return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+    }
+
+    function taskDurationLabel(task, fallbackDuration = normalizeDuration(task.duration)) {
+      const actual = actualDurationMinutes(task);
+      return actual === null ? `예상 ${formatDuration(fallbackDuration)}` : `실제 소요 ${formatDuration(actual)}`;
+    }
+
+    function formatIcsDate(date) {
+      const pad = (value) => String(value).padStart(2, "0");
+      return [
+        date.getUTCFullYear(),
+        pad(date.getUTCMonth() + 1),
+        pad(date.getUTCDate()),
+        "T",
+        pad(date.getUTCHours()),
+        pad(date.getUTCMinutes()),
+        pad(date.getUTCSeconds()),
+        "Z",
+      ].join("");
+    }
+
+    function escapeIcs(value) {
+      return String(value)
+        .replaceAll("\\", "\\\\")
+        .replaceAll(";", "\\;")
+        .replaceAll(",", "\\,")
+        .replaceAll("\n", "\\n");
+    }
+
+    function buildCoachSnapshot() {
+      const todayTasks = tasks
+        .filter((task) => task.date === todayIso)
+        .sort(sortByPlanOrder);
+      const finished = todayTasks.filter(isTaskDone);
+      const open = todayTasks.filter((task) => !isTaskDone(task));
+      const estimatedOpenMinutes = open.reduce((sum, task) => sum + normalizeDuration(task.duration), 0);
+      const actualFinishedMinutes = finished.reduce((sum, task) => sum + (actualDurationMinutes(task) ?? normalizeDuration(task.duration)), 0);
+      const now = new Date();
+
+      return {
+        now: now.toISOString(),
+        localTime: formatTime(now),
+        total: todayTasks.length,
+        open: open.length,
+        finished: finished.length,
+        estimatedOpenMinutes,
+        actualFinishedMinutes,
+        tasks: todayTasks.map((task) => ({
+          title: task.title,
+          category: taskCategory(task),
+          duration: normalizeDuration(task.duration),
+          startTime: task.startTime || "",
+          endTime: task.endTime || "",
+          done: isTaskDone(task),
+        })),
+        tone: coachTone.value,
+      };
+    }
+
+    async function updateCoach({ force = false } = {}) {
+      const cached = loadCoachCache();
+      const now = Date.now();
+      if (!force && cached && cached.tone === coachTone.value && now - cached.updatedAt < 60 * 60 * 1000) {
+        renderCoach(cached.message, cached.updatedAt, cached.source);
+        return;
+      }
+
+      const snapshot = buildCoachSnapshot();
+      let result = null;
+      coachRefresh.disabled = true;
+      coachMeta.textContent = "AI가 오늘 일정을 보고 있습니다.";
+
+      try {
+        const response = await fetch("./api/coach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(snapshot),
+        });
+        if (response.ok) {
+          result = await response.json();
+        }
+      } catch {
+        result = null;
+      }
+
+      const message = result?.message?.trim() || localCoachMessage(snapshot);
+      const source = result?.message ? "AI" : "로컬 분석";
+      const updatedAt = Date.now();
+      localStorage.setItem(coachStorageKey, JSON.stringify({ message, source, updatedAt, tone: coachTone.value }));
+      renderCoach(message, updatedAt, source);
+      coachRefresh.disabled = false;
+    }
+
+    function loadCoachCache() {
+      try {
+        return JSON.parse(localStorage.getItem(coachStorageKey));
+      } catch {
+        return null;
+      }
+    }
+
+    function renderCoach(message, updatedAt, source) {
+      coachMessage.textContent = message;
+      const time = new Date(updatedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+      coachMeta.textContent = `${source} · ${time} 갱신 · 1시간마다 자동 갱신`;
+    }
+
+    function localCoachMessage(snapshot) {
+      const progress = snapshot.finished / snapshot.total;
+      const openText = formatDuration(snapshot.estimatedOpenMinutes);
+      const hour = new Date(snapshot.now).getHours();
+      const tone = snapshot.tone || "realistic";
+
+      if (!snapshot.total) {
+        return toneMessage(tone, {
+          gentle: "오늘 등록된 할 일이 아직 없어요. 우선 부담 없이 해야 할 일 2~3개만 적어볼까요?",
+          realistic: "오늘 등록된 할 일이 없습니다. 먼저 오늘 해야 할 일을 2~3개만 적고 시작해보세요.",
+          strict: "오늘 할 일이 비어 있습니다. 계획 없이 흘러가기 전에 지금 바로 핵심 할 일부터 적으세요.",
+        });
+      }
+
+      if (progress < 0.5 && snapshot.total >= 4 && hour >= 12) {
+        return toneMessage(tone, {
+          gentle: `오늘 할 일이 조금 많은 편이에요. 남은 예상 시간은 ${openText} 정도라서, 짧은 일부터 하나씩 줄여가면 좋겠습니다.`,
+          realistic: `오늘 할 일이 ${snapshot.total}개인데 아직 절반도 끝나지 않았습니다. 남은 예상 시간은 ${openText} 정도라서, 지금은 짧은 일부터 빠르게 끝내는 편이 좋겠습니다.`,
+          strict: `오늘 할 일이 ${snapshot.total}개인데 아직 절반도 못 끝냈습니다. 남은 ${openText}을 줄이려면 지금부터 짧은 일부터 바로 처리하세요.`,
+        });
+      }
+
+      if (snapshot.open === 0) {
+        return toneMessage(tone, {
+          gentle: `오늘 기록된 일은 모두 끝났어요. 실제 소요 시간은 ${formatDuration(snapshot.actualFinishedMinutes)}입니다. 이제 정리해도 좋겠습니다.`,
+          realistic: `오늘 기록된 일은 모두 끝났습니다. 실제 소요 시간은 ${formatDuration(snapshot.actualFinishedMinutes)}입니다. 남은 시간은 정리와 내일 준비에 쓰세요.`,
+          strict: `오늘 일은 끝났습니다. 바로 멈추지 말고 5분만 정리해서 내일 첫 작업까지 정해두세요.`,
+        });
+      }
+
+      if (snapshot.estimatedOpenMinutes <= 60) {
+        return toneMessage(tone, {
+          gentle: `남은 일은 ${snapshot.open}개, 예상 ${openText} 정도예요. 지금 흐름이면 차분히 마무리해도 괜찮습니다.`,
+          realistic: `남은 일은 ${snapshot.open}개, 예상 ${openText} 정도입니다. 무리해서 속도를 올리기보다 하나씩 마무리하세요.`,
+          strict: `남은 일은 ${snapshot.open}개뿐입니다. 늘어지지 말고 ${openText} 안에 끝내는 걸 목표로 잡으세요.`,
+        });
+      }
+
+      return toneMessage(tone, {
+        gentle: `남은 일은 ${snapshot.open}개이고 예상 ${openText} 정도예요. 새 일을 늘리기보다 지금 목록을 하나씩 줄여가면 됩니다.`,
+        realistic: `남은 일은 ${snapshot.open}개이고 예상 ${openText} 정도입니다. 새 일을 늘리기보다 지금 목록의 순서를 지키면서 하나씩 끝내는 게 좋겠습니다.`,
+        strict: `남은 일은 ${snapshot.open}개, 예상 ${openText}입니다. 새 일 추가하지 말고 지금 순서대로 처리하세요.`,
+      });
+    }
+
+    function toneMessage(tone, messages) {
+      return messages[tone] || messages.realistic;
+    }
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+      });
+    }
+
+    window.setInterval(renderTimePlan, 60000);
+    coachTimer = window.setInterval(() => updateCoach({ force: false }), 60 * 60 * 1000);
+
+    render();
+    updateCoach({ force: false });
+  </script>
+</body>
+</html>

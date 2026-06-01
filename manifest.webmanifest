@@ -1,0 +1,19 @@
+{
+  "name": "할 일 체크리스트",
+  "short_name": "체크리스트",
+  "description": "날짜별, 월별, 캘린더, 시간 계획표를 지원하는 체크리스트 앱",
+  "start_url": "./todo-checklist-app.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7f4",
+  "theme_color": "#2f7d68",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./checklist-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
