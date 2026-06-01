@@ -147,22 +147,16 @@
     }
 
     .sync-panel {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      display: flex;
       gap: 10px;
-      align-items: end;
+      align-items: center;
+      justify-content: space-between;
       margin: -8px 0 18px;
       padding: 14px 16px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--panel);
       box-shadow: 0 8px 22px rgba(28, 36, 33, 0.05);
-    }
-
-    .sync-fields {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 8px;
     }
 
     .sync-actions {
@@ -173,9 +167,8 @@
     }
 
     .sync-status {
-      grid-column: 1 / -1;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.45;
     }
 
@@ -806,9 +799,9 @@
         grid-template-columns: 1fr;
       }
 
-      .sync-panel,
-      .sync-fields {
-        grid-template-columns: 1fr;
+      .sync-panel {
+        align-items: stretch;
+        flex-direction: column;
       }
 
       .sync-actions {
@@ -959,23 +952,13 @@
       </div>
     </section>
 
-    <section class="sync-panel" aria-label="동기화">
-      <div class="sync-fields">
-        <div class="field">
-          <label for="syncEmail">동기화 이메일</label>
-          <input id="syncEmail" type="email" autocomplete="email" placeholder="email@example.com">
-        </div>
-        <div class="field">
-          <label for="syncPassword">비밀번호</label>
-          <input id="syncPassword" type="password" autocomplete="current-password" placeholder="8자 이상">
-        </div>
-        <div class="sync-status" id="syncStatus">동기화 설정 전입니다. 배포 환경변수에 Supabase 설정을 넣으면 사용할 수 있습니다.</div>
-      </div>
+    <section class="sync-panel" id="syncPanel" aria-label="계정 동기화">
+      <div class="sync-status" id="syncStatus">PC와 휴대폰을 연동하려면 로그인하세요.</div>
       <div class="sync-actions">
-        <button class="ghost" id="syncLogin" type="button">로그인</button>
-        <button class="ghost" id="syncSignup" type="button">가입</button>
-        <button class="ghost" id="syncNow" type="button">동기화</button>
-        <button class="ghost" id="syncLogout" type="button">로그아웃</button>
+        <button class="ghost" id="syncOpen" type="button">로그인/가입</button>
+        <button class="ghost" id="syncSkip" type="button">나중에</button>
+        <button class="ghost" id="syncNow" type="button" hidden>동기화</button>
+        <button class="ghost" id="syncLogout" type="button" hidden>로그아웃</button>
       </div>
     </section>
 
@@ -1061,6 +1044,28 @@
     </section>
   </main>
 
+  <div class="modal" id="syncModal" role="dialog" aria-modal="true" aria-labelledby="syncTitle">
+    <form class="dialog" id="syncForm">
+      <div class="dialog-head">
+        <h2 id="syncTitle">계정 연동</h2>
+        <button class="icon-btn" id="syncClose" type="button" aria-label="닫기" title="닫기">×</button>
+      </div>
+      <div class="field">
+        <label for="syncEmail">이메일</label>
+        <input id="syncEmail" type="email" autocomplete="email" placeholder="email@example.com">
+      </div>
+      <div class="field">
+        <label for="syncPassword">비밀번호</label>
+        <input id="syncPassword" type="password" autocomplete="current-password" placeholder="8자 이상">
+      </div>
+      <div class="dialog-actions">
+        <button class="ghost" id="syncCancel" type="button">취소</button>
+        <button class="ghost" id="syncSignup" type="button">가입</button>
+        <button id="syncLogin" type="submit">로그인</button>
+      </div>
+    </form>
+  </div>
+
   <div class="modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
     <form class="dialog" id="editForm">
       <div class="dialog-head">
@@ -1128,6 +1133,7 @@
   <script>
     const storageKey = "daily-checklist-tasks-v1";
     const coachStorageKey = "daily-checklist-ai-coach-v1";
+    const syncChoiceKey = "daily-checklist-sync-choice-v1";
     const form = document.querySelector("#taskForm");
     const input = document.querySelector("#taskInput");
     const dateInput = document.querySelector("#taskDate");
@@ -1149,6 +1155,11 @@
     const coachMeta = document.querySelector("#coachMeta");
     const coachRefresh = document.querySelector("#coachRefresh");
     const coachTone = document.querySelector("#coachTone");
+    const syncPanel = document.querySelector("#syncPanel");
+    const syncOpen = document.querySelector("#syncOpen");
+    const syncSkip = document.querySelector("#syncSkip");
+    const syncModal = document.querySelector("#syncModal");
+    const syncForm = document.querySelector("#syncForm");
     const syncEmail = document.querySelector("#syncEmail");
     const syncPassword = document.querySelector("#syncPassword");
     const syncStatus = document.querySelector("#syncStatus");
@@ -1156,6 +1167,8 @@
     const syncSignup = document.querySelector("#syncSignup");
     const syncNow = document.querySelector("#syncNow");
     const syncLogout = document.querySelector("#syncLogout");
+    const syncClose = document.querySelector("#syncClose");
+    const syncCancel = document.querySelector("#syncCancel");
     const selectionText = document.querySelector("#selectionText");
     const selectedEdit = document.querySelector("#selectedEdit");
     const selectedDelete = document.querySelector("#selectedDelete");
@@ -1271,10 +1284,23 @@
       localStorage.setItem("daily-checklist-coach-tone-v1", coachTone.value);
       updateCoach({ force: true });
     });
-    syncLogin.addEventListener("click", signInForSync);
+    syncOpen.addEventListener("click", openSyncModal);
+    syncSkip.addEventListener("click", () => {
+      localStorage.setItem(syncChoiceKey, "local");
+      updateAuthUi();
+    });
+    syncForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      signInForSync();
+    });
     syncSignup.addEventListener("click", signUpForSync);
     syncLogout.addEventListener("click", signOutForSync);
     syncNow.addEventListener("click", () => syncCloudNow({ forceUpload: true }));
+    syncClose.addEventListener("click", closeSyncModal);
+    syncCancel.addEventListener("click", closeSyncModal);
+    syncModal.addEventListener("click", (event) => {
+      if (event.target === syncModal) closeSyncModal();
+    });
     timePlan.addEventListener("click", (event) => {
       const button = event.target.closest("button");
       if (!button?.dataset.action?.startsWith("time-")) return;
@@ -1360,6 +1386,7 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && editModal.classList.contains("open")) closeEditModal();
       if (event.key === "Escape" && timeModal.classList.contains("open")) closeTimeModal();
+      if (event.key === "Escape" && syncModal.classList.contains("open")) closeSyncModal();
     });
 
     timeForm.addEventListener("submit", (event) => {
@@ -2067,24 +2094,41 @@
     }
 
     function setSyncControls(enabled) {
-      [syncEmail, syncPassword, syncLogin, syncSignup, syncNow, syncLogout].forEach((control) => {
+      [syncOpen, syncSkip, syncEmail, syncPassword, syncLogin, syncSignup, syncNow, syncLogout].forEach((control) => {
         control.disabled = !enabled;
       });
     }
 
     function updateAuthUi() {
       const signedIn = Boolean(currentUser);
-      syncEmail.disabled = signedIn || !supabaseClient;
-      syncPassword.disabled = signedIn || !supabaseClient;
-      syncLogin.disabled = signedIn || !supabaseClient;
-      syncSignup.disabled = signedIn || !supabaseClient;
+      const choseLocalOnly = localStorage.getItem(syncChoiceKey) === "local";
+      syncPanel.hidden = !signedIn && choseLocalOnly;
+      syncOpen.hidden = signedIn;
+      syncSkip.hidden = signedIn;
       syncNow.disabled = !signedIn;
       syncLogout.disabled = !signedIn;
-      updateSyncStatus(signedIn ? `${currentUser.email}로 동기화 중입니다.` : "로그인하면 PC와 휴대폰 데이터가 동기화됩니다.");
+      syncNow.hidden = !signedIn;
+      syncLogout.hidden = !signedIn;
+      updateSyncStatus(signedIn ? `${currentUser.email}로 동기화 중입니다.` : "PC와 휴대폰을 연동하려면 로그인하세요.");
     }
 
     function updateSyncStatus(message) {
       syncStatus.textContent = message;
+    }
+
+    function openSyncModal() {
+      if (!supabaseClient) {
+        updateSyncStatus("Supabase 설정이 없어서 이 기기 안에만 저장됩니다.");
+        return;
+      }
+      localStorage.removeItem(syncChoiceKey);
+      syncModal.classList.add("open");
+      syncEmail.focus();
+    }
+
+    function closeSyncModal() {
+      syncModal.classList.remove("open");
+      syncPassword.value = "";
     }
 
     async function signUpForSync() {
@@ -2102,9 +2146,13 @@
         return;
       }
 
-      currentUser = data.user || null;
+      currentUser = data.session?.user || null;
+      localStorage.removeItem(syncChoiceKey);
       updateSyncStatus(data.session ? "가입 완료. 동기화를 시작합니다." : "가입 확인 메일을 보냈습니다. 메일 확인 후 로그인하세요.");
-      if (data.session) await syncCloudNow({ forceUpload: true });
+      if (data.session) {
+        closeSyncModal();
+        await syncCloudNow({ forceUpload: true });
+      }
       updateAuthUi();
     }
 
@@ -2124,6 +2172,8 @@
       }
 
       currentUser = data.user;
+      localStorage.removeItem(syncChoiceKey);
+      closeSyncModal();
       updateAuthUi();
       await loadCloudTasks();
     }
