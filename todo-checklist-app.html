@@ -146,6 +146,39 @@
       align-items: center;
     }
 
+    .sync-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+      margin: -8px 0 18px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 8px 22px rgba(28, 36, 33, 0.05);
+    }
+
+    .sync-fields {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .sync-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .sync-status {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .layout {
       display: grid;
       grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
@@ -297,13 +330,13 @@
 
     .plan-item {
       display: grid;
-      grid-template-columns: 110px minmax(0, 1fr) auto;
+      grid-template-columns: 150px minmax(0, 1fr) auto;
       gap: 10px;
-      align-items: start;
+      align-items: center;
       border: 1px solid #cfe1da;
       border-radius: 8px;
       background: #fff;
-      padding: 10px;
+      padding: 9px 10px;
     }
 
     .plan-item.done {
@@ -315,7 +348,8 @@
       color: var(--accent-dark);
       font-weight: 900;
       font-size: 13px;
-      line-height: 1.4;
+      line-height: 1.3;
+      white-space: nowrap;
     }
 
     .plan-title {
@@ -772,6 +806,19 @@
         grid-template-columns: 1fr;
       }
 
+      .sync-panel,
+      .sync-fields {
+        grid-template-columns: 1fr;
+      }
+
+      .sync-actions {
+        justify-content: stretch;
+      }
+
+      .sync-actions .ghost {
+        flex: 1;
+      }
+
       .composer {
         position: static;
       }
@@ -805,11 +852,79 @@
       }
 
       .item {
-        grid-template-columns: 24px minmax(0, 1fr);
+        grid-template-columns: 22px minmax(0, 1fr) 96px;
+        gap: 8px;
+      }
+
+      .item .time-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px;
+        align-self: start;
+        width: 96px;
+      }
+
+      .item .time-btn {
+        width: 100%;
+        min-height: 42px;
+        padding: 0;
+        font-size: 12px;
       }
 
       .plan-item {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 92px;
+        gap: 8px;
+        padding: 9px;
+      }
+
+      .plan-time {
+        grid-column: 1 / -1;
+        font-size: 13px;
+      }
+
+      .plan-title {
+        font-size: 16px;
+      }
+
+      .plan-item .meta {
+        gap: 5px;
+      }
+
+      .plan-item .time-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px;
+        width: 92px;
+      }
+
+      .plan-item .time-btn {
+        width: 100%;
+        min-height: 40px;
+        padding: 0;
+        font-size: 12px;
+      }
+
+      .plan-head {
+        align-items: start;
+      }
+
+      .plan-head h2 {
+        max-width: 120px;
+      }
+
+      .plan-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: min(220px, 62vw);
+      }
+
+      .plan-actions .ghost {
+        min-height: 36px;
+        padding: 0 8px;
+      }
+
+      .plan-actions #refreshPlan {
+        grid-column: 2;
       }
     }
   </style>
@@ -841,6 +956,26 @@
           <option value="strict">빡세게</option>
         </select>
         <button class="ghost" id="coachRefresh" type="button">AI 조언</button>
+      </div>
+    </section>
+
+    <section class="sync-panel" aria-label="동기화">
+      <div class="sync-fields">
+        <div class="field">
+          <label for="syncEmail">동기화 이메일</label>
+          <input id="syncEmail" type="email" autocomplete="email" placeholder="email@example.com">
+        </div>
+        <div class="field">
+          <label for="syncPassword">비밀번호</label>
+          <input id="syncPassword" type="password" autocomplete="current-password" placeholder="8자 이상">
+        </div>
+        <div class="sync-status" id="syncStatus">동기화 설정 전입니다. 배포 환경변수에 Supabase 설정을 넣으면 사용할 수 있습니다.</div>
+      </div>
+      <div class="sync-actions">
+        <button class="ghost" id="syncLogin" type="button">로그인</button>
+        <button class="ghost" id="syncSignup" type="button">가입</button>
+        <button class="ghost" id="syncNow" type="button">동기화</button>
+        <button class="ghost" id="syncLogout" type="button">로그아웃</button>
       </div>
     </section>
 
@@ -988,6 +1123,8 @@
     </form>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
   <script>
     const storageKey = "daily-checklist-tasks-v1";
     const coachStorageKey = "daily-checklist-ai-coach-v1";
@@ -1012,6 +1149,13 @@
     const coachMeta = document.querySelector("#coachMeta");
     const coachRefresh = document.querySelector("#coachRefresh");
     const coachTone = document.querySelector("#coachTone");
+    const syncEmail = document.querySelector("#syncEmail");
+    const syncPassword = document.querySelector("#syncPassword");
+    const syncStatus = document.querySelector("#syncStatus");
+    const syncLogin = document.querySelector("#syncLogin");
+    const syncSignup = document.querySelector("#syncSignup");
+    const syncNow = document.querySelector("#syncNow");
+    const syncLogout = document.querySelector("#syncLogout");
     const selectionText = document.querySelector("#selectionText");
     const selectedEdit = document.querySelector("#selectedEdit");
     const selectedDelete = document.querySelector("#selectedDelete");
@@ -1050,6 +1194,10 @@
     let notificationsEnabled = false;
     let selectedTaskId = "";
     let coachTimer = null;
+    let supabaseClient = null;
+    let currentUser = null;
+    let cloudSaveTimer = null;
+    let isLoadingCloud = false;
 
     const today = new Date();
     const todayIso = toIsoDate(today);
@@ -1123,6 +1271,10 @@
       localStorage.setItem("daily-checklist-coach-tone-v1", coachTone.value);
       updateCoach({ force: true });
     });
+    syncLogin.addEventListener("click", signInForSync);
+    syncSignup.addEventListener("click", signUpForSync);
+    syncLogout.addEventListener("click", signOutForSync);
+    syncNow.addEventListener("click", () => syncCloudNow({ forceUpload: true }));
     timePlan.addEventListener("click", (event) => {
       const button = event.target.closest("button");
       if (!button?.dataset.action?.startsWith("time-")) return;
@@ -1349,6 +1501,7 @@
       localStorage.setItem(storageKey, JSON.stringify(tasks));
       render();
       updateCoach({ force: false });
+      scheduleCloudSave();
     }
 
     function render() {
@@ -1723,7 +1876,7 @@
       planSummary.textContent = `${formatTime(now)} 기준 · ${modeLabel} ${todayTasks.length}개 · 총 ${formatDuration(totalMinutes)}${overflow}`;
       timePlan.innerHTML = rows.map(({ task, duration, from, to, recordedStart, recordedEnd }) => `
         <article class="plan-item ${isTaskDone(task) ? "done" : ""}">
-          <div class="plan-time">${formatTime(from)}<br>${formatTime(to)}</div>
+          <div class="plan-time">${formatTime(from)} ~ ${formatTime(to)}</div>
           <div>
             <div class="plan-title">${escapeHtml(task.title)}</div>
             <div class="meta">
@@ -1888,6 +2041,165 @@
         .replaceAll("\n", "\\n");
     }
 
+    async function initCloudSync() {
+      const config = window.APP_CONFIG || {};
+      if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY || !window.supabase?.createClient) {
+        updateSyncStatus("Supabase 설정이 없어서 이 기기 안에만 저장됩니다.");
+        setSyncControls(false);
+        return;
+      }
+
+      supabaseClient = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+      setSyncControls(true);
+      const { data } = await supabaseClient.auth.getSession();
+      currentUser = data.session?.user || null;
+
+      supabaseClient.auth.onAuthStateChange((_event, session) => {
+        currentUser = session?.user || null;
+        updateAuthUi();
+        if (currentUser) loadCloudTasks();
+      });
+
+      updateAuthUi();
+      if (currentUser) {
+        await loadCloudTasks();
+      }
+    }
+
+    function setSyncControls(enabled) {
+      [syncEmail, syncPassword, syncLogin, syncSignup, syncNow, syncLogout].forEach((control) => {
+        control.disabled = !enabled;
+      });
+    }
+
+    function updateAuthUi() {
+      const signedIn = Boolean(currentUser);
+      syncEmail.disabled = signedIn || !supabaseClient;
+      syncPassword.disabled = signedIn || !supabaseClient;
+      syncLogin.disabled = signedIn || !supabaseClient;
+      syncSignup.disabled = signedIn || !supabaseClient;
+      syncNow.disabled = !signedIn;
+      syncLogout.disabled = !signedIn;
+      updateSyncStatus(signedIn ? `${currentUser.email}로 동기화 중입니다.` : "로그인하면 PC와 휴대폰 데이터가 동기화됩니다.");
+    }
+
+    function updateSyncStatus(message) {
+      syncStatus.textContent = message;
+    }
+
+    async function signUpForSync() {
+      if (!supabaseClient) return;
+      const email = syncEmail.value.trim();
+      const password = syncPassword.value;
+      if (!email || password.length < 8) {
+        updateSyncStatus("이메일과 8자 이상의 비밀번호를 입력하세요.");
+        return;
+      }
+
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) {
+        updateSyncStatus(`가입 실패: ${error.message}`);
+        return;
+      }
+
+      currentUser = data.user || null;
+      updateSyncStatus(data.session ? "가입 완료. 동기화를 시작합니다." : "가입 확인 메일을 보냈습니다. 메일 확인 후 로그인하세요.");
+      if (data.session) await syncCloudNow({ forceUpload: true });
+      updateAuthUi();
+    }
+
+    async function signInForSync() {
+      if (!supabaseClient) return;
+      const email = syncEmail.value.trim();
+      const password = syncPassword.value;
+      if (!email || !password) {
+        updateSyncStatus("이메일과 비밀번호를 입력하세요.");
+        return;
+      }
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        updateSyncStatus(`로그인 실패: ${error.message}`);
+        return;
+      }
+
+      currentUser = data.user;
+      updateAuthUi();
+      await loadCloudTasks();
+    }
+
+    async function signOutForSync() {
+      if (!supabaseClient) return;
+      await supabaseClient.auth.signOut();
+      currentUser = null;
+      updateAuthUi();
+    }
+
+    async function loadCloudTasks() {
+      if (!supabaseClient || !currentUser || isLoadingCloud) return;
+      isLoadingCloud = true;
+      updateSyncStatus("클라우드 데이터를 불러오는 중입니다.");
+
+      const { data, error } = await supabaseClient
+        .from("task_state")
+        .select("tasks, updated_at")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        updateSyncStatus(`동기화 불러오기 실패: ${error.message}`);
+        isLoadingCloud = false;
+        return;
+      }
+
+      if (data?.tasks?.length) {
+        tasks = ensureTaskOrder(data.tasks);
+        localStorage.setItem(storageKey, JSON.stringify(tasks));
+        render();
+        updateCoach({ force: true });
+        updateSyncStatus(`클라우드에서 불러왔습니다. ${formatSyncTime()}`);
+      } else if (tasks.length) {
+        await syncCloudNow({ forceUpload: true });
+      } else {
+        updateSyncStatus(`동기화 준비 완료. ${formatSyncTime()}`);
+      }
+
+      isLoadingCloud = false;
+    }
+
+    function scheduleCloudSave() {
+      if (!supabaseClient || !currentUser || isLoadingCloud) return;
+      window.clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = window.setTimeout(() => syncCloudNow(), 700);
+    }
+
+    async function syncCloudNow({ forceUpload = false } = {}) {
+      if (!supabaseClient || !currentUser) {
+        updateSyncStatus("로그인 후 동기화할 수 있습니다.");
+        return;
+      }
+
+      updateSyncStatus("클라우드에 저장 중입니다.");
+      const { error } = await supabaseClient
+        .from("task_state")
+        .upsert({
+          user_id: currentUser.id,
+          tasks,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+
+      if (error) {
+        updateSyncStatus(`동기화 저장 실패: ${error.message}`);
+        return;
+      }
+
+      updateSyncStatus(`${forceUpload ? "현재 기기 데이터를 업로드했습니다." : "저장 완료."} ${formatSyncTime()}`);
+    }
+
+    function formatSyncTime() {
+      return new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    }
+
     function buildCoachSnapshot() {
       const todayTasks = tasks
         .filter((task) => task.date === todayIso)
@@ -2026,6 +2338,7 @@
 
     render();
     updateCoach({ force: false });
+    initCloudSync();
   </script>
 </body>
 </html>
