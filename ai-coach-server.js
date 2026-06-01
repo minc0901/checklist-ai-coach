@@ -22,6 +22,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/config.js") {
+      const config = {
+        SUPABASE_URL: process.env.SUPABASE_URL || "",
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || "",
+      };
+      send(res, 200, `window.APP_CONFIG = ${JSON.stringify(config)};`, "text/javascript; charset=utf-8", "no-store");
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/coach") {
       await handleCoach(req, res);
       return;
