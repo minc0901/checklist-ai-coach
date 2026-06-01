@@ -1066,19 +1066,13 @@
         <h2 id="syncTitle">계정 연동</h2>
         <button class="icon-btn" id="syncClose" type="button" aria-label="닫기" title="닫기">×</button>
       </div>
-      <div class="field">
-        <label for="syncEmail">이메일</label>
-        <input id="syncEmail" type="email" autocomplete="email" placeholder="email@example.com">
-      </div>
-      <div class="field">
-        <label for="syncCode">인증번호</label>
-        <input id="syncCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="메일로 받은 6자리 번호">
-      </div>
-      <div class="sync-modal-status" id="syncModalStatus">이메일을 입력하고 인증번호를 받아주세요.</div>
       <div class="dialog-actions sync-dialog-actions">
+        <button class="ghost" id="syncGoogle" type="button">Google로 계속</button>
+        <button class="ghost" id="syncKakao" type="button">카카오톡으로 계속</button>
+      </div>
+      <div class="sync-modal-status" id="syncModalStatus">원하는 계정으로 로그인하면 PC와 휴대폰이 동기화됩니다.</div>
+      <div class="dialog-actions">
         <button class="ghost" id="syncCancel" type="button">취소</button>
-        <button class="ghost" id="syncSignup" type="button">인증번호 받기</button>
-        <button id="syncLogin" type="submit">확인</button>
       </div>
     </form>
   </div>
@@ -1177,12 +1171,10 @@
     const syncSkip = document.querySelector("#syncSkip");
     const syncModal = document.querySelector("#syncModal");
     const syncForm = document.querySelector("#syncForm");
-    const syncEmail = document.querySelector("#syncEmail");
-    const syncCode = document.querySelector("#syncCode");
     const syncStatus = document.querySelector("#syncStatus");
     const syncModalStatus = document.querySelector("#syncModalStatus");
-    const syncLogin = document.querySelector("#syncLogin");
-    const syncSignup = document.querySelector("#syncSignup");
+    const syncGoogle = document.querySelector("#syncGoogle");
+    const syncKakao = document.querySelector("#syncKakao");
     const syncNow = document.querySelector("#syncNow");
     const syncLogout = document.querySelector("#syncLogout");
     const syncClose = document.querySelector("#syncClose");
@@ -1309,9 +1301,9 @@
     });
     syncForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      signInForSync();
     });
-    syncSignup.addEventListener("click", signUpForSync);
+    syncGoogle.addEventListener("click", () => signInWithProvider("google", "Google"));
+    syncKakao.addEventListener("click", () => signInWithProvider("kakao", "카카오톡"));
     syncLogout.addEventListener("click", signOutForSync);
     syncNow.addEventListener("click", () => syncCloudNow({ forceUpload: true }));
     syncClose.addEventListener("click", closeSyncModal);
@@ -2112,7 +2104,7 @@
     }
 
     function setSyncControls(enabled) {
-      [syncOpen, syncSkip, syncEmail, syncCode, syncLogin, syncSignup, syncNow, syncLogout].forEach((control) => {
+      [syncOpen, syncSkip, syncGoogle, syncKakao, syncNow, syncLogout].forEach((control) => {
         control.disabled = !enabled;
       });
     }
@@ -2160,7 +2152,7 @@
     }
 
     function setSyncBusy(isBusy) {
-      [syncLogin, syncSignup, syncCancel, syncClose].forEach((control) => {
+      [syncGoogle, syncKakao, syncCancel, syncClose].forEach((control) => {
         control.disabled = isBusy;
       });
     }
@@ -2171,76 +2163,26 @@
         return;
       }
       localStorage.removeItem(syncChoiceKey);
-      syncModalStatus.textContent = "이메일을 입력하고 인증번호를 받아주세요.";
+      syncModalStatus.textContent = "원하는 계정으로 로그인하면 PC와 휴대폰이 동기화됩니다.";
       syncModal.classList.add("open");
-      syncEmail.focus();
+      syncGoogle.focus();
     }
 
     function closeSyncModal() {
       syncModal.classList.remove("open");
-      syncCode.value = "";
     }
 
-    async function signUpForSync() {
+    async function signInWithProvider(provider, label) {
       if (!supabaseClient) return;
-      const email = syncEmail.value.trim();
-      if (!email) {
-        updateSyncModalStatus("이메일을 입력하세요.");
-        return;
-      }
-
       setSyncBusy(true);
-      updateSyncModalStatus("인증번호를 보내는 중입니다.");
-      try {
-        const { error } = await supabaseClient.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: true },
-        });
-        if (error) {
-          updateSyncModalStatus(syncErrorMessage(error, "인증번호 발송"));
-          return;
-        }
-
-        localStorage.removeItem(syncChoiceKey);
-        updateSyncModalStatus("인증번호를 보냈습니다. 메일함에서 6자리 번호를 확인해주세요.");
-        syncCode.focus();
-      } catch (error) {
-        updateSyncModalStatus(`인증번호 발송 실패: ${error.message || "잠시 후 다시 시도하세요."}`);
-      } finally {
-        setSyncBusy(false);
-      }
-    }
-
-    async function signInForSync() {
-      if (!supabaseClient) return;
-      const email = syncEmail.value.trim();
-      const token = syncCode.value.trim();
-      if (!email || !token) {
-        updateSyncModalStatus("이메일과 인증번호를 입력하세요.");
-        return;
-      }
-
-      setSyncBusy(true);
-      updateSyncModalStatus("인증번호를 확인하는 중입니다.");
-      try {
-        const { data, error } = await supabaseClient.auth.verifyOtp({
-          email,
-          token,
-          type: "email",
-        });
-        if (error) {
-          updateSyncModalStatus(syncErrorMessage(error, "인증"));
-          return;
-        }
-
-        currentUser = data.session?.user || data.user || null;
-        localStorage.removeItem(syncChoiceKey);
-        closeSyncModal();
-        updateAuthUi();
-        await loadCloudTasks();
-      } catch (error) {
-        updateSyncModalStatus(`인증 실패: ${error.message || "잠시 후 다시 시도하세요."}`);
-      } finally {
+      updateSyncModalStatus(`${label} 로그인 화면으로 이동합니다.`);
+      const redirectTo = `${window.location.origin}${window.location.pathname}`;
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo },
+      });
+      if (error) {
+        updateSyncModalStatus(syncErrorMessage(error, `${label} 로그인`));
         setSyncBusy(false);
       }
     }
