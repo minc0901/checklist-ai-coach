@@ -888,13 +888,14 @@
       }
 
       .plan-item {
-        grid-template-columns: 22px minmax(0, 1fr) 92px;
+        grid-template-columns: 22px minmax(0, 1fr);
         gap: 8px;
-        padding: 9px;
+        align-items: start;
+        padding: 10px;
       }
 
       .plan-time {
-        grid-column: 1 / -1;
+        grid-column: 2;
         font-size: 13px;
       }
 
@@ -910,7 +911,8 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 5px;
-        width: 92px;
+        grid-column: 2;
+        width: min(150px, 100%);
       }
 
       .plan-item .time-btn {
