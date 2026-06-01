@@ -172,6 +172,14 @@
       line-height: 1.45;
     }
 
+    .sync-modal-status {
+      min-height: 20px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
     .layout {
       display: grid;
       grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
@@ -667,6 +675,10 @@
       margin-top: 16px;
     }
 
+    .sync-dialog-actions {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .time-dialog-actions {
       grid-template-columns: 1fr 1fr 1fr;
     }
@@ -810,6 +822,10 @@
 
       .sync-actions .ghost {
         flex: 1;
+      }
+
+      .sync-dialog-actions {
+        grid-template-columns: 1fr;
       }
 
       .composer {
@@ -1055,13 +1071,14 @@
         <input id="syncEmail" type="email" autocomplete="email" placeholder="email@example.com">
       </div>
       <div class="field">
-        <label for="syncPassword">비밀번호</label>
-        <input id="syncPassword" type="password" autocomplete="current-password" placeholder="8자 이상">
+        <label for="syncCode">인증번호</label>
+        <input id="syncCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="메일로 받은 6자리 번호">
       </div>
-      <div class="dialog-actions">
+      <div class="sync-modal-status" id="syncModalStatus">이메일을 입력하고 인증번호를 받아주세요.</div>
+      <div class="dialog-actions sync-dialog-actions">
         <button class="ghost" id="syncCancel" type="button">취소</button>
-        <button class="ghost" id="syncSignup" type="button">가입</button>
-        <button id="syncLogin" type="submit">로그인</button>
+        <button class="ghost" id="syncSignup" type="button">인증번호 받기</button>
+        <button id="syncLogin" type="submit">확인</button>
       </div>
     </form>
   </div>
@@ -1161,8 +1178,9 @@
     const syncModal = document.querySelector("#syncModal");
     const syncForm = document.querySelector("#syncForm");
     const syncEmail = document.querySelector("#syncEmail");
-    const syncPassword = document.querySelector("#syncPassword");
+    const syncCode = document.querySelector("#syncCode");
     const syncStatus = document.querySelector("#syncStatus");
+    const syncModalStatus = document.querySelector("#syncModalStatus");
     const syncLogin = document.querySelector("#syncLogin");
     const syncSignup = document.querySelector("#syncSignup");
     const syncNow = document.querySelector("#syncNow");
@@ -2094,7 +2112,7 @@
     }
 
     function setSyncControls(enabled) {
-      [syncOpen, syncSkip, syncEmail, syncPassword, syncLogin, syncSignup, syncNow, syncLogout].forEach((control) => {
+      [syncOpen, syncSkip, syncEmail, syncCode, syncLogin, syncSignup, syncNow, syncLogout].forEach((control) => {
         control.disabled = !enabled;
       });
     }
@@ -2114,6 +2132,37 @@
 
     function updateSyncStatus(message) {
       syncStatus.textContent = message;
+      if (syncModal?.classList.contains("open")) {
+        syncModalStatus.textContent = message;
+      }
+    }
+
+    function updateSyncModalStatus(message) {
+      syncModalStatus.textContent = message;
+      syncStatus.textContent = message;
+    }
+
+    function syncErrorMessage(error, actionName) {
+      const message = String(error?.message || "").toLowerCase();
+      if (message.includes("rate limit")) {
+        return "인증 메일을 너무 자주 요청했습니다. 잠시 후 다시 시도해주세요.";
+      }
+      if (message.includes("already")) {
+        return "이미 가입된 이메일일 수 있습니다. 로그인 버튼을 눌러보세요.";
+      }
+      if (message.includes("invalid login")) {
+        return "이메일 또는 인증번호가 맞지 않습니다.";
+      }
+      if (message.includes("email not confirmed")) {
+        return "인증번호를 먼저 확인해주세요.";
+      }
+      return `${actionName} 실패: ${error?.message || "잠시 후 다시 시도하세요."}`;
+    }
+
+    function setSyncBusy(isBusy) {
+      [syncLogin, syncSignup, syncCancel, syncClose].forEach((control) => {
+        control.disabled = isBusy;
+      });
     }
 
     function openSyncModal() {
@@ -2122,60 +2171,78 @@
         return;
       }
       localStorage.removeItem(syncChoiceKey);
+      syncModalStatus.textContent = "이메일을 입력하고 인증번호를 받아주세요.";
       syncModal.classList.add("open");
       syncEmail.focus();
     }
 
     function closeSyncModal() {
       syncModal.classList.remove("open");
-      syncPassword.value = "";
+      syncCode.value = "";
     }
 
     async function signUpForSync() {
       if (!supabaseClient) return;
       const email = syncEmail.value.trim();
-      const password = syncPassword.value;
-      if (!email || password.length < 8) {
-        updateSyncStatus("이메일과 8자 이상의 비밀번호를 입력하세요.");
+      if (!email) {
+        updateSyncModalStatus("이메일을 입력하세요.");
         return;
       }
 
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
-      if (error) {
-        updateSyncStatus(`가입 실패: ${error.message}`);
-        return;
-      }
+      setSyncBusy(true);
+      updateSyncModalStatus("인증번호를 보내는 중입니다.");
+      try {
+        const { error } = await supabaseClient.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: true },
+        });
+        if (error) {
+          updateSyncModalStatus(syncErrorMessage(error, "인증번호 발송"));
+          return;
+        }
 
-      currentUser = data.session?.user || null;
-      localStorage.removeItem(syncChoiceKey);
-      updateSyncStatus(data.session ? "가입 완료. 동기화를 시작합니다." : "가입 확인 메일을 보냈습니다. 메일 확인 후 로그인하세요.");
-      if (data.session) {
-        closeSyncModal();
-        await syncCloudNow({ forceUpload: true });
+        localStorage.removeItem(syncChoiceKey);
+        updateSyncModalStatus("인증번호를 보냈습니다. 메일함에서 6자리 번호를 확인해주세요.");
+        syncCode.focus();
+      } catch (error) {
+        updateSyncModalStatus(`인증번호 발송 실패: ${error.message || "잠시 후 다시 시도하세요."}`);
+      } finally {
+        setSyncBusy(false);
       }
-      updateAuthUi();
     }
 
     async function signInForSync() {
       if (!supabaseClient) return;
       const email = syncEmail.value.trim();
-      const password = syncPassword.value;
-      if (!email || !password) {
-        updateSyncStatus("이메일과 비밀번호를 입력하세요.");
+      const token = syncCode.value.trim();
+      if (!email || !token) {
+        updateSyncModalStatus("이메일과 인증번호를 입력하세요.");
         return;
       }
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) {
-        updateSyncStatus(`로그인 실패: ${error.message}`);
-        return;
-      }
+      setSyncBusy(true);
+      updateSyncModalStatus("인증번호를 확인하는 중입니다.");
+      try {
+        const { data, error } = await supabaseClient.auth.verifyOtp({
+          email,
+          token,
+          type: "email",
+        });
+        if (error) {
+          updateSyncModalStatus(syncErrorMessage(error, "인증"));
+          return;
+        }
 
-      currentUser = data.user;
-      localStorage.removeItem(syncChoiceKey);
-      closeSyncModal();
-      updateAuthUi();
-      await loadCloudTasks();
+        currentUser = data.session?.user || data.user || null;
+        localStorage.removeItem(syncChoiceKey);
+        closeSyncModal();
+        updateAuthUi();
+        await loadCloudTasks();
+      } catch (error) {
+        updateSyncModalStatus(`인증 실패: ${error.message || "잠시 후 다시 시도하세요."}`);
+      } finally {
+        setSyncBusy(false);
+      }
     }
 
     async function signOutForSync() {
