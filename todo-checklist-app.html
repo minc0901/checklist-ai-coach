@@ -331,7 +331,7 @@
 
     .plan-item {
       display: grid;
-      grid-template-columns: 150px minmax(0, 1fr) auto;
+      grid-template-columns: 28px 150px minmax(0, 1fr) auto;
       gap: 10px;
       align-items: center;
       border: 1px solid #cfe1da;
@@ -343,6 +343,12 @@
     .plan-item.done {
       background: #f7faf8;
       opacity: 0.82;
+    }
+
+    .plan-item.dragging {
+      opacity: 0.55;
+      border-color: var(--accent);
+      box-shadow: 0 10px 22px rgba(47, 125, 104, 0.18);
     }
 
     .plan-time {
@@ -510,6 +516,7 @@
       color: #7c8983;
       cursor: grab;
       user-select: none;
+      touch-action: none;
       font-weight: 900;
       line-height: 1;
     }
@@ -881,7 +888,7 @@
       }
 
       .plan-item {
-        grid-template-columns: 1fr 92px;
+        grid-template-columns: 22px minmax(0, 1fr) 92px;
         gap: 8px;
         padding: 9px;
       }
@@ -1212,6 +1219,9 @@
     let pointerDragTaskId = "";
     let manualDragElement = null;
     let manualDragMoved = false;
+    let planDragTaskId = "";
+    let planDragElement = null;
+    let planDragMoved = false;
     let latestPlanRows = [];
     let notificationTimers = [];
     let notificationsEnabled = false;
@@ -1258,7 +1268,7 @@
         order: firstOrder + index,
       }));
 
-      tasks = [...newTasks, ...tasks];
+      tasks = [...tasks, ...newTasks];
       input.value = "";
       saveAndRender();
       input.focus();
@@ -1486,21 +1496,51 @@
       moveManualDrag(event);
     });
 
+    timePlan.addEventListener("pointerdown", (event) => {
+      startPlanDrag(event);
+    });
+
+    timePlan.addEventListener("mousedown", (event) => {
+      startPlanDrag(event);
+    });
+
+    document.addEventListener("pointermove", (event) => {
+      movePlanDrag(event);
+    });
+
+    document.addEventListener("mousemove", (event) => {
+      movePlanDrag(event);
+    });
+
+    document.addEventListener("pointerup", () => {
+      finishPlanDrag();
+    });
+
+    document.addEventListener("mouseup", () => {
+      finishPlanDrag();
+    });
+
     function startManualDrag(event) {
       if (event.target.closest("button, input, select, textarea, a")) return;
+      if (event.pointerType === "touch" && !event.target.closest(".drag-handle")) return;
       const item = event.target.closest(".item");
       if (!item) return;
       pointerDragTaskId = item.dataset.id;
       manualDragElement = item;
       manualDragMoved = false;
       item.classList.add("dragging");
+      if (event.pointerId && item.setPointerCapture) {
+        item.setPointerCapture(event.pointerId);
+      }
       event.preventDefault();
     }
 
     function moveManualDrag(event) {
       if (!pointerDragTaskId || !manualDragElement) return;
       event.preventDefault();
+      manualDragElement.style.pointerEvents = "none";
       const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".item");
+      manualDragElement.style.pointerEvents = "";
       if (!target || target === manualDragElement) return;
 
       manualDragMoved = true;
@@ -1524,6 +1564,45 @@
       }
       clearSelection();
       saveVisibleOrder();
+    }
+
+    function startPlanDrag(event) {
+      if (!event.target.closest(".drag-handle")) return;
+      const item = event.target.closest(".plan-item");
+      if (!item) return;
+      planDragTaskId = item.dataset.id;
+      planDragElement = item;
+      planDragMoved = false;
+      item.classList.add("dragging");
+      if (event.pointerId && item.setPointerCapture) {
+        item.setPointerCapture(event.pointerId);
+      }
+      event.preventDefault();
+    }
+
+    function movePlanDrag(event) {
+      if (!planDragTaskId || !planDragElement) return;
+      event.preventDefault();
+      planDragElement.style.pointerEvents = "none";
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".plan-item");
+      planDragElement.style.pointerEvents = "";
+      if (!target || target === planDragElement) return;
+
+      planDragMoved = true;
+      const box = target.getBoundingClientRect();
+      const before = event.clientY < box.top + box.height / 2;
+      target.parentElement.insertBefore(planDragElement, before ? target : target.nextElementSibling);
+    }
+
+    function finishPlanDrag() {
+      if (!planDragTaskId) return;
+      const wasMoved = planDragMoved;
+      planDragTaskId = "";
+      planDragElement = null;
+      planDragMoved = false;
+      document.querySelectorAll(".plan-item.dragging").forEach((item) => item.classList.remove("dragging"));
+      if (!wasMoved) return;
+      savePlanOrder();
     }
 
     function loadTasks() {
@@ -1562,6 +1641,11 @@
         renderSelectionControls();
       }
       renderTimePlan();
+
+      if (view === "date") {
+        list.innerHTML = "";
+        return;
+      }
 
       if (view === "calendar") {
         renderCalendar(visible);
@@ -1812,7 +1896,7 @@
 
     function nextOrder() {
       const orders = tasks.map(taskOrder).filter(Number.isFinite);
-      return orders.length ? Math.min(...orders) - 100 : 0;
+      return orders.length ? Math.max(...orders) + 100 : 0;
     }
 
     function reorderTasks(sourceId, targetId, beforeTarget) {
@@ -1844,6 +1928,28 @@
       const reordered = [
         ...remaining.slice(0, insertAt),
         ...visibleTasks,
+        ...remaining.slice(insertAt),
+      ];
+      const orderMap = new Map(reordered.map((task, index) => [task.id, index]));
+      tasks = tasks.map((task) => ({ ...task, order: orderMap.get(task.id) ?? taskOrder(task) }));
+      saveAndRender();
+    }
+
+    function savePlanOrder() {
+      const planIds = Array.from(timePlan.querySelectorAll(".plan-item")).map((item) => item.dataset.id);
+      if (planIds.length < 2) return;
+
+      const todaySet = new Set(planIds);
+      const current = [...tasks].sort(sortByPlanOrder);
+      const firstTodayIndex = current.findIndex((task) => todaySet.has(task.id));
+      const remaining = current.filter((task) => !todaySet.has(task.id));
+      const planTasks = planIds
+        .map((id) => tasks.find((task) => task.id === id))
+        .filter(Boolean);
+      const insertAt = firstTodayIndex >= 0 ? firstTodayIndex : current.length;
+      const reordered = [
+        ...remaining.slice(0, insertAt),
+        ...planTasks,
         ...remaining.slice(insertAt),
       ];
       const orderMap = new Map(reordered.map((task, index) => [task.id, index]));
@@ -1912,7 +2018,8 @@
       const modeLabel = status === "done" ? "끝난 항목" : (status === "open" ? "남은 항목" : "전체 항목");
       planSummary.textContent = `${formatTime(now)} 기준 · ${modeLabel} ${todayTasks.length}개 · 총 ${formatDuration(totalMinutes)}${overflow}`;
       timePlan.innerHTML = rows.map(({ task, duration, from, to, recordedStart, recordedEnd }) => `
-        <article class="plan-item ${isTaskDone(task) ? "done" : ""}">
+        <article class="plan-item ${isTaskDone(task) ? "done" : ""}" data-id="${escapeHtml(task.id)}">
+          <span class="drag-handle" aria-label="계획 순서 변경" title="드래그해서 순서 변경">⋮⋮</span>
           <div class="plan-time">${formatTime(from)} ~ ${formatTime(to)}</div>
           <div>
             <div class="plan-title">${escapeHtml(task.title)}</div>
