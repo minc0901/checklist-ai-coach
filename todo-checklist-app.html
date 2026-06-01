@@ -888,10 +888,10 @@
       }
 
       .plan-item {
-        grid-template-columns: 22px minmax(0, 1fr);
+        grid-template-columns: 22px minmax(0, 1fr) 72px;
         gap: 8px;
-        align-items: start;
-        padding: 10px;
+        align-items: center;
+        padding: 8px 9px;
       }
 
       .plan-time {
@@ -905,7 +905,8 @@
       }
 
       .plan-title {
-        font-size: 16px;
+        font-size: 15px;
+        line-height: 1.25;
       }
 
       .plan-item .meta {
@@ -914,15 +915,17 @@
 
       .plan-item .time-actions {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
         gap: 5px;
-        grid-column: 2;
-        width: min(150px, 100%);
+        grid-column: 3;
+        grid-row: 1 / span 2;
+        width: 72px;
+        align-self: center;
       }
 
       .plan-item .time-btn {
         width: 100%;
-        min-height: 40px;
+        min-height: 34px;
         padding: 0;
         font-size: 12px;
       }
