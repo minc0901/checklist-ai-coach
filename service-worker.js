@@ -1,4 +1,4 @@
-const CACHE_NAME = "checklist-planner-v36";
+const CACHE_NAME = "checklist-planner-v37";
 const APP_SHELL = [
   "./todo-checklist-app.html",
   "./manifest.webmanifest",
