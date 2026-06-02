@@ -329,19 +329,61 @@
       gap: 8px;
     }
 
+    .plan-group {
+      display: grid;
+      gap: 4px;
+    }
+
+    .plan-group + .plan-group {
+      margin-top: 8px;
+    }
+
+    .plan-group-head {
+      width: 100%;
+      min-height: 30px;
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr) auto;
+      gap: 6px;
+      align-items: center;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      padding: 2px 4px;
+      text-align: left;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .plan-group-head:hover {
+      background: rgba(255, 255, 255, 0.65);
+    }
+
+    .plan-group-count {
+      border-radius: 999px;
+      background: #dff4ec;
+      color: var(--accent-dark);
+      padding: 3px 8px;
+      font-size: 12px;
+    }
+
+    .plan-group-items {
+      display: grid;
+      gap: 4px;
+    }
+
     .plan-item {
       display: grid;
-      grid-template-columns: 28px 150px minmax(0, 1fr) auto;
-      gap: 10px;
+      grid-template-columns: 26px 122px minmax(0, 1fr) auto;
+      gap: 8px;
       align-items: center;
-      border: 1px solid #cfe1da;
-      border-radius: 8px;
-      background: #fff;
-      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.62);
+      padding: 5px 6px;
     }
 
     .plan-item.done {
-      background: #f7faf8;
+      background: rgba(247, 250, 248, 0.74);
       opacity: 0.82;
     }
 
@@ -354,14 +396,14 @@
     .plan-time {
       color: var(--accent-dark);
       font-weight: 900;
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.3;
       white-space: nowrap;
     }
 
     .plan-title {
       font-weight: 900;
-      line-height: 1.35;
+      line-height: 1.25;
       overflow-wrap: anywhere;
     }
 
@@ -388,19 +430,31 @@
 
     .time-actions {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       justify-content: flex-end;
+      align-items: center;
       gap: 6px;
     }
 
     .time-btn {
-      min-height: 32px;
+      min-height: 28px;
       border-radius: 7px;
       background: #eef7f4;
       color: var(--accent-dark);
-      padding: 0 10px;
+      padding: 0 9px;
       font-size: 12px;
       font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .time-chip {
+      min-height: 28px;
+      border-radius: 999px;
+      background: #f0f3f1;
+      color: var(--muted);
+      padding: 0 9px;
+      font-size: 12px;
+      font-weight: 800;
       white-space: nowrap;
     }
 
@@ -888,25 +942,26 @@
       }
 
       .plan-item {
-        grid-template-columns: 22px minmax(0, 1fr) 72px;
-        gap: 8px;
+        grid-template-columns: 18px minmax(74px, 0.9fr) minmax(0, 1fr) auto;
+        gap: 6px;
         align-items: center;
-        padding: 8px 9px;
+        padding: 5px 4px;
       }
 
       .plan-time {
         grid-column: 2;
-        font-size: 13px;
+        font-size: 11px;
+        white-space: normal;
       }
 
       .plan-item > div:nth-of-type(2) {
-        grid-column: 2;
+        grid-column: 3;
         min-width: 0;
       }
 
       .plan-title {
-        font-size: 15px;
-        line-height: 1.25;
+        font-size: 14px;
+        line-height: 1.2;
       }
 
       .plan-item .meta {
@@ -916,18 +971,24 @@
       .plan-item .time-actions {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 5px;
-        grid-column: 3;
-        grid-row: 1 / span 2;
-        width: 72px;
+        gap: 4px;
+        grid-column: 4;
+        grid-row: 1;
+        width: 56px;
         align-self: center;
       }
 
-      .plan-item .time-btn {
+      .plan-item .time-btn,
+      .plan-item .time-chip {
         width: 100%;
-        min-height: 34px;
+        min-height: 28px;
         padding: 0;
-        font-size: 12px;
+        font-size: 11px;
+      }
+
+      .plan-group-head {
+        font-size: 14px;
+        min-height: 28px;
       }
 
       .plan-head {
@@ -1162,6 +1223,7 @@
     const storageKey = "daily-checklist-tasks-v1";
     const coachStorageKey = "daily-checklist-ai-coach-v1";
     const syncChoiceKey = "daily-checklist-sync-choice-v1";
+    const planCollapseKey = "daily-checklist-plan-collapse-v1";
     const form = document.querySelector("#taskForm");
     const input = document.querySelector("#taskInput");
     const dateInput = document.querySelector("#taskDate");
@@ -1233,6 +1295,7 @@
     let planDragElement = null;
     let planDragMoved = false;
     let latestPlanRows = [];
+    let collapsedPlanCategories = new Set(JSON.parse(localStorage.getItem(planCollapseKey) || "[]"));
     let notificationTimers = [];
     let notificationsEnabled = false;
     let selectedTaskId = "";
@@ -1333,6 +1396,17 @@
     });
     timePlan.addEventListener("click", (event) => {
       const button = event.target.closest("button");
+      if (button?.dataset.action === "toggle-plan-category") {
+        const category = button.dataset.category || uncategorizedLabel;
+        if (collapsedPlanCategories.has(category)) {
+          collapsedPlanCategories.delete(category);
+        } else {
+          collapsedPlanCategories.add(category);
+        }
+        localStorage.setItem(planCollapseKey, JSON.stringify([...collapsedPlanCategories]));
+        renderTimePlan();
+        return;
+      }
       if (!button?.dataset.action?.startsWith("time-")) return;
       openTimeModal(button.dataset.id, button.dataset.action === "time-start" ? "start" : "end");
       clearSelection();
@@ -1825,6 +1899,37 @@
       return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
     }
 
+    function formatTimeValue(value) {
+      if (!value) return "";
+      const [hour, minute] = value.split(":").map(Number);
+      if (Number.isNaN(hour) || Number.isNaN(minute)) return value;
+      return new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour, minute)
+        .toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function compactTimeValue(value) {
+      if (!value) return "";
+      const [hour = "", minute = ""] = value.split(":");
+      return `${hour}:${minute}`;
+    }
+
+    function planActionMarkup(task) {
+      const id = escapeHtml(task.id);
+      if (!task.startTime) {
+        return `<button class="time-btn" type="button" data-action="time-start" data-id="${id}">시작</button>`;
+      }
+      if (!task.endTime) {
+        return `
+          <button class="time-chip" type="button" data-action="time-start" data-id="${id}">${escapeHtml(compactTimeValue(task.startTime))}</button>
+          <button class="time-btn end" type="button" data-action="time-end" data-id="${id}">끝</button>
+        `;
+      }
+      return `
+        <button class="time-chip" type="button" data-action="time-start" data-id="${id}">${escapeHtml(compactTimeValue(task.startTime))}</button>
+        <button class="time-btn end" type="button" data-action="time-end" data-id="${id}">수정</button>
+      `;
+    }
+
     function openTimeModal(id, mode) {
       const task = tasks.find((item) => item.id === id);
       if (!task) return;
@@ -2027,24 +2132,45 @@
       const overflow = cursor.getDate() !== start.getDate() ? " · 자정 이후까지 이어집니다" : "";
       const modeLabel = status === "done" ? "끝난 항목" : (status === "open" ? "남은 항목" : "전체 항목");
       planSummary.textContent = `${formatTime(now)} 기준 · ${modeLabel} ${todayTasks.length}개 · 총 ${formatDuration(totalMinutes)}${overflow}`;
-      timePlan.innerHTML = rows.map(({ task, duration, from, to, recordedStart, recordedEnd }) => `
-        <article class="plan-item ${isTaskDone(task) ? "done" : ""}" data-id="${escapeHtml(task.id)}">
-          <span class="drag-handle" aria-label="계획 순서 변경" title="드래그해서 순서 변경">⋮⋮</span>
-          <div class="plan-time">${formatTime(from)} ~ ${formatTime(to)}</div>
-          <div>
-            <div class="plan-title">${escapeHtml(task.title)}</div>
-            <div class="meta">
-              <span class="pill">${escapeHtml(taskCategory(task))}</span>
-              <span class="pill">${escapeHtml(taskDurationLabel(task, duration))}</span>
-              ${recordedStart || recordedEnd ? "" : '<span class="pill">예정</span>'}
-            </div>
+      const groups = rows.reduce((acc, row) => {
+        const category = taskCategory(row.task);
+        if (!acc.has(category)) acc.set(category, []);
+        acc.get(category).push(row);
+        return acc;
+      }, new Map());
+      timePlan.innerHTML = [...groups.entries()].map(([category, groupRows]) => {
+        const collapsed = collapsedPlanCategories.has(category);
+        const groupItems = collapsed ? "" : `
+          <div class="plan-group-items">
+            ${groupRows.map(({ task, duration, from, to, recordedStart, recordedEnd }) => `
+              <article class="plan-item ${isTaskDone(task) ? "done" : ""}" data-id="${escapeHtml(task.id)}">
+                <span class="drag-handle" aria-label="계획 순서 변경" title="드래그해서 순서 변경">⋮⋮</span>
+                <div class="plan-time">${formatTime(from)} ~ ${formatTime(to)}</div>
+                <div>
+                  <div class="plan-title">${escapeHtml(task.title)}</div>
+                  <div class="meta">
+                    <span class="pill">${escapeHtml(taskDurationLabel(task, duration))}</span>
+                    ${recordedStart || recordedEnd ? "" : '<span class="pill">예정</span>'}
+                  </div>
+                </div>
+                <div class="time-actions">
+                  ${planActionMarkup(task)}
+                </div>
+              </article>
+            `).join("")}
           </div>
-          <div class="time-actions">
-            <button class="time-btn" type="button" data-action="time-start" data-id="${escapeHtml(task.id)}">${task.startTime ? "시작 수정" : "시작"}</button>
-            <button class="time-btn end" type="button" data-action="time-end" data-id="${escapeHtml(task.id)}">${task.endTime ? "끝 수정" : "끝"}</button>
-          </div>
-        </article>
-      `).join("");
+        `;
+        return `
+          <section class="plan-group">
+            <button class="plan-group-head" type="button" data-action="toggle-plan-category" data-category="${escapeHtml(category)}">
+              <span aria-hidden="true">${collapsed ? "▶" : "▼"}</span>
+              <span>${escapeHtml(category)}</span>
+              <span class="plan-group-count">${groupRows.length}개</span>
+            </button>
+            ${groupItems}
+          </section>
+        `;
+      }).join("");
 
       if (notificationsEnabled) {
         scheduleBrowserNotifications();
